@@ -29,4 +29,4 @@ verify_v6.py
 test_captcha.py
 cleanup_test_data.py
 setup_v7.sh
-run.sh
+
