@@ -22,15 +22,3 @@ legacy_backup/
 # IDE
 .idea/
 .vscode/
-<<<<<<< HEAD
-
-# Local Dev
-verify_v3.py
-verify_v6.py
-test_captcha.py
-cleanup_test_data.py
-setup_v7.sh
-
-=======
-run.sh
->>>>>>> b15f4af3698e71bb4d69742359bd0ba038bcc74f

@@ -63,22 +63,7 @@ python3 server/init_db.py
 ```
 
 ### 4. WSGI Configuration
-Go to the **Web** tab in PythonAnywhere and edit the WSGI configuration file. Replace everything with:
-
-```python
-import sys
-import os
-from dotenv import load_dotenv
-
-project_home = '/home/YOUR_USERNAME/stealth-shortener'
-if project_home not in sys.path:
-    sys.path.append(project_home)
-
-# Load .env
-load_dotenv(os.path.join(project_home, '.env'))
-
-from server.flask_app import app as application
-```
+Go to the **Web** tab in PythonAnywhere and edit the WSGI configuration file. Replace everything with the file provided in my repo.
 
 ### 5. Cloudflare Turnstile (Captcha)
 To enable the "Not a Robot" check:
