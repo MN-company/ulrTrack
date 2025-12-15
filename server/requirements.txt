@@ -1,0 +1,6 @@
+flask
+flask-sqlalchemy
+requests
+gunicorn
+python-dotenv
+user-agents

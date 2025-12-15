@@ -1,0 +1,6 @@
+typer
+requests
+segno
+questionary
+rich
+pillow

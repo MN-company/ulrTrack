@@ -1,0 +1,32 @@
+# Secrets
+.env
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Database
+*.db
+*.sqlite3
+instance/
+server_data/
+
+# Logs & Stats
+*.log
+stats_export.csv
+legacy_backup/
+
+# IDE
+.idea/
+.vscode/
+
+# Local Dev
+verify_v3.py
+verify_v6.py
+test_captcha.py
+cleanup_test_data.py
+setup_v7.sh
+run.sh

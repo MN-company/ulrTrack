@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="referrer" content="no-referrer">
+    <title>Loading...</title>
+    <style>
+        body {
+            background: #000;
+            color: #000;
+        }
+    </style>
+    <script>
+        // V8 Beacon: Send Client Metrics (Async, Non-Blocking)
+        try {
+            const data = JSON.stringify({
+                visit_id: "{{ visit_id }}",
+                screen: window.screen.width + "x" + window.screen.height,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                webdriver: navigator.webdriver // True = Bot/Selenium
+            });
+            navigator.sendBeacon("/api/beacon", data);
+        } catch (e) { console.log(e); }
+
+        // Stealth Redirect: 200 OK status, immediate JS jump
+        window.location.replace("{{ destination }}");
+    </script>
+</head>
+
+<body>
+    <noscript>
+        <div style="text-align:center; padding:50px; font-family:sans-serif;">
+            <p>Please enable JavaScript to proceed.</p>
+        </div>
+    </noscript>
+</body>
+
+</html>
