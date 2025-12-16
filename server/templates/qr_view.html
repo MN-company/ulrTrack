@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card" style="max-width: 600px; margin: 0 auto; text-align: center;">
+    <h2>QR Code: <span class="text-accent">/{{ link.slug }}</span></h2>
+    <div style="margin: 30px 0;">
+        <img id="qr-img" src="/dashboard/qr/{{ link.slug }}?scale=10"
+            style="border: 5px solid white; border-radius: 8px;">
+    </div>
+
+    <div class="form-group" style="text-align: left; max-width: 300px; margin: 0 auto;">
+        <label>Color</label>
+        <input type="color" id="qr-color" value="#000000" onchange="updateQR()">
+
+        <label style="margin-top: 10px;">Background</label>
+        <input type="color" id="qr-bg" value="#ffffff" onchange="updateQR()">
+
+        <label style="margin-top: 10px;">Logo URL (Optional)</label>
+        <input type="url" id="qr-logo" placeholder="https://..." style="width: 100%; padding: 5px; margin-top: 5px;"
+            onchange="updateQR()">
+    </div>
+
+    <div style="margin-top: 30px;">
+        <a href="/dashboard" class="btn-outline">Back</a>
+        <a id="download-btn" href="/dashboard/qr/{{ link.slug }}?scale=10" download="qr_{{ link.slug }}.png"
+            class="btn">DOWNLOAD PNG</a>
+    </div>
+</div>
+
+<script>
+    function updateQR() {
+        const color = document.getElementById('qr-color').value.replace('#', '');
+        const bg = document.getElementById('qr-bg').value.replace('#', '');
+        const logo = document.getElementById('qr-logo').value;
+
+        let url = `/dashboard/qr/{{ link.slug }}?scale=10&color=${color}&bg=${bg}`;
+        if (logo) {
+            url += `&logo=${encodeURIComponent(logo)}`;
+        }
+
+        document.getElementById('qr-img').src = url;
+        document.getElementById('download-btn').href = url;
+    }
+</script>
+{% endblock %}

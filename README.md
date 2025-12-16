@@ -23,13 +23,12 @@ Is your traffic being blocked by Facebook, Instagram, or TikTok because of "Susp
 We collect advanced hardware data to identify unique users and bots:
 *   **Screen Resolution**: Width/Height (e.g., 1920x1080).
 *   **Color Depth**: 24-bit/32-bit.
-*   **Timezone**: Browser-reported caching zone.
-*   **Keyboard Layout**: (V9) Heuristic detection of physical keyboard locale.
-*   **AdBlock Status**: (V9) Detects if the user is blocking internal scripts.
+*   **Languge **: Detection of the language of the user to improve regional blocking.
+*   **AdBlock Status**: Detects if the user is blocking internal scripts.
 
 ### 🎭 URL Masking
 - **Double Shortening**: Automatically integrates with **is.gd** to mask your domain.
-- **Why?**: Even if your domain is "my-dark-store.com", users will see a generic `is.gd/xyz` link first. This adds an extra layer of anonymity and prevents direct domain flagging.
+- **Why?**: Even if your domain is "darknetmarket.com", users will see a generic `is.gd/xyz` link first. This adds an extra layer of anonymity and prevents direct domain flagging.
 
 ### 🌍 Traffic Filtering
 - **ISP & Geo Blocking**: Native integration with `ip-api.com` to detect and block Hosting Providers/Data Centers (AWS, DigitalOcean, Hetzner, etc.).

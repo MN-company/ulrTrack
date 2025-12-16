@@ -6,3 +6,6 @@ user-agents
 requests
 flask-limiter
 pytz
+flask-login
+segno
+Pillow

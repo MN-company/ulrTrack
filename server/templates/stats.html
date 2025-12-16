@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2>Analytics: <span class="text-accent">/{{ link.slug }}</span></h2>
+    <div class="flex-row">
+        <a href="/dashboard/export/{{ link.slug }}" class="btn-outline"><i class="fas fa-download"></i> EXPORT CSV</a>
+        <a href="/dashboard" class="btn-outline">Back</a>
+    </div>
+</div>
+
+<div class="card">
+    <canvas id="clicksChart" style="max-height: 400px;"></canvas>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+    <!-- Countries -->
+    <div class="card">
+        <h3>Top Countries</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Country</th>
+                    <th>Visits</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for country, count in top_countries %}
+                <tr>
+                    <td>{{ country }}</td>
+                    <td class="mono">{{ count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Referrers -->
+    <div class="card">
+        <h3>Referrers</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Source</th>
+                    <th>Count</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ref, count in top_referrers %}
+                <tr>
+                    <td>{{ ref or 'Direct' }}</td>
+                    <td class="mono">{{ count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- V14: Detailed Log -->
+<div class="card" style="margin-top: 20px;">
+    <h3>Live Traffic Log (Last 100)</h3>
+    <table style="font-size: 0.85rem;">
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>IP</th>
+                <th>ISP</th>
+                <th>Country</th>
+                <th>Device</th>
+                <th>Lang</th>
+                <th>Screen</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for v in visits %}
+            <tr>
+                <td class="mono">{{ v.timestamp.strftime('%H:%M:%S %d/%m') }}</td>
+                <td class="mono">{{ v.ip_address }}</td>
+                <td>{{ v.isp or '-' }}</td>
+                <td><span class="badge badge-gray">{{ v.country or 'XX' }}</span></td>
+                <td>
+                    {% if v.is_mobile %}<i class="fas fa-mobile-alt"></i>{% else %}<i class="fas fa-desktop"></i>{%
+                    endif %}
+                    {{ v.os }}
+                </td>
+                <td class="mono" style="font-size:0.8rem;">{{ v.browser_language or '-' }}</td>
+                <td class="mono" style="font-size:0.8rem;">{{ v.screen_res or '-' }}</td>
+                <td>
+                    {% if v.adblock %}<span class="badge badge-red">ADB</span>{% endif %}
+                    {% if v.is_vpn %}
+                    <span class="badge badge-red">VPN</span>
+                    {% elif v.is_proxy %}
+                    <span class="badge badge-red">PROXY</span>
+                    {% else %}
+                    <span class="badge badge-green">OK</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+
+<script>
+    const ctx = document.getElementById('clicksChart').getContext('2d');
+    const labels = {{ chart_labels | safe }};
+    const data = {{ chart_values | safe }};
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Clicks',
+                data: data,
+                borderColor: '#00ff9d',
+                backgroundColor: 'rgba(0, 255, 157, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+</script>
+{% endblock %}

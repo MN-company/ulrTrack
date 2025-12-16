@@ -1,6 +1,10 @@
 #!/bin/bash
 # Universal Launcher (Self-Contained)
 
+# Resolve absolute path to avoid CWD issues
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+cd "$SCRIPT_DIR" || exit
+
 # Ensure venv exists locally
 if [ ! -d "venv" ]; then
     echo "❌ Virtual Environment missing! Creating local venv..."
@@ -13,8 +17,17 @@ fi
 # Determine mode
 if [ "$1" == "server" ]; then
     echo "🚀 Starting Flask Server..."
-    export FLASK_APP=server/flask_app.py
-    ./venv/bin/flask run --host=0.0.0.0 --port=8080
+    
+    APP_PATH="$SCRIPT_DIR/server/flask_app.py"
+    
+    if [ ! -f "$APP_PATH" ]; then
+        echo "❌ Error: Cannot find $APP_PATH"
+        exit 1
+    fi
+    
+    export FLASK_APP="$APP_PATH"
+    export FLASK_ENV=development
+    "$SCRIPT_DIR/venv/bin/flask" run --host=127.0.0.1 --port=8080
     
 elif [ "$1" == "client" ]; then
     echo "💻 Starting Client CLI..."

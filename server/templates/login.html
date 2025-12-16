@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="display: flex; justify-content: center; align-items: center; height: 70vh;">
+    <div class="card" style="width: 100%; max-width: 400px; text-align: center;">
+        <h2 style="margin-bottom: 20px; font-weight: 300;">ACCESS <span class="text-accent">TERMINAL</span></h2>
+
+        <form method="POST" action="/login">
+            <div style="margin-bottom: 20px;">
+                <input type="password" name="api_key" placeholder="Enter API Key" required
+                    style="text-align: center; font-size: 1.1rem; letter-spacing: 2px;">
+            </div>
+
+            <!-- Fake Captcha for V1 Visuals (User requested layout) -->
+            <div
+                style="margin-bottom: 20px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px; border: var(--border); display: flex; align-items: center; justify-content: center; gap: 10px;">
+                <input type="checkbox" required id="human" style="width: 20px;">
+                <input type="checkbox" name="fake_captcha" required style="display: none;">
+                <label for="human" style="font-size: 0.9rem; color: var(--text-sec);">I am human</label>
+            </div>
+
+            <button type="submit" class="btn" style="width: 100%;">ENTER DASHBOARD</button>
+
+            <div style="margin-top: 20px; text-align: center; color: var(--text-sec); font-size: 0.8rem;">
+                <i class="fas fa-shield-alt"></i> Protected by Cloudflare
+            </div>
+        </form>
+
+        <p style="margin-top: 20px; font-size: 0.8rem; color: var(--text-sec);">Restricted Area. Authorized Personnel
+            Only.</p>
+    </div>
+</div>
+{% endblock %}

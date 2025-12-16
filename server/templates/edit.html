@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    .tab-nav {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        border-bottom: var(--border);
+        padding-bottom: 10px;
+    }
+
+    .tab-btn {
+        background: none;
+        border: none;
+        color: var(--text-sec);
+        padding: 8px 16px;
+        cursor: pointer;
+        font-size: 1rem;
+        border-radius: 6px;
+    }
+
+    .tab-btn.active {
+        background: rgba(0, 255, 157, 0.1);
+        color: var(--accent);
+        font-weight: 600;
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    label {
+        display: block;
+        color: var(--text-sec);
+        margin-bottom: 5px;
+        font-size: 0.9rem;
+    }
+
+    .toggle-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 6px;
+        margin-bottom: 10px;
+    }
+</style>
+<script>
+    function openTab(name) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(name).classList.add('active');
+        document.getElementById('btn-' + name).classList.add('active');
+    }
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 800px; margin: 0 auto;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h2>Edit Link: <span class="text-accent">/{{ link.slug }}</span></h2>
+        <a href="/dashboard" class="btn-outline btn-sm">Cancel</a>
+    </div>
+
+    <form method="POST">
+        <div class="tab-nav">
+            <button type="button" id="btn-general" class="tab-btn active" onclick="openTab('general')">General</button>
+            <button type="button" id="btn-targeting" class="tab-btn" onclick="openTab('targeting')">Targeting</button>
+            <button type="button" id="btn-protection" class="tab-btn"
+                onclick="openTab('protection')">Protection</button>
+            <button type="button" id="btn-scheduling" class="tab-btn"
+                onclick="openTab('scheduling')">Scheduling</button>
+            <button type="button" id="btn-limits" class="tab-btn" onclick="openTab('limits')">Limits</button>
+        </div>
+
+        <div id="general" class="tab-content active">
+            <div class="form-group">
+                <label>Destination URL *</label>
+                <input type="url" name="destination" value="{{ link.destination }}" required>
+            </div>
+
+            <div class="card" style="margin-top:20px; border:1px solid var(--border);">
+                <label>Current Masked Link:</label>
+                <div style="margin-bottom:10px; color:var(--accent);">
+                    {{ link.public_masked_url or "Not Masked" }}
+                </div>
+                <div class="toggle-row">
+                    <label>Regenerate Mask (is.gd)</label>
+                    <input type="checkbox" name="regenerate_mask" value="true" style="width:auto;">
+                </div>
+            </div>
+        </div>
+
+        <div id="targeting" class="tab-content">
+            <div class="form-group">
+                <label><i class="fab fa-apple"></i> iOS Destination</label>
+                <input type="url" name="ios_url" value="{{ link.ios_url or '' }}">
+            </div>
+            <div class="form-group">
+                <label><i class="fab fa-android"></i> Android Destination</label>
+                <input type="url" name="android_url" value="{{ link.android_url or '' }}">
+            </div>
+        </div>
+
+        <div id="protection" class="tab-content">
+            <div class="toggle-row">
+                <label>Block Bots & Crawlers</label>
+                <input type="checkbox" name="block_bots" value="true" {% if link.block_bots %}checked{% endif %}
+                    style="width:auto;">
+            </div>
+            <div class="toggle-row">
+                <label>Block VPN / Proxies</label>
+                <input type="checkbox" name="block_vpn" value="true" {% if link.block_vpn %}checked{% endif %}
+                    style="width:auto;">
+            </div>
+            <div class="toggle-row">
+                <label>Block AdBlock Users</label>
+                <input type="checkbox" name="block_adblock" value="true" {% if link.block_adblock %}checked{% endif %}
+                    style="width:auto;">
+            </div>
+            <div class="toggle-row">
+                <label>Block No-JS</label>
+                <input type="checkbox" name="allow_no_js" value="true" {% if link.allow_no_js %}checked{% endif %}
+                    style="width:auto;">
+            </div>
+            <div class="form-group" style="margin-top:10px;">
+                <label>Allowed Countries (e.g. IT,US)</label>
+                <input type="text" name="allowed_countries" value="{{ link.allowed_countries or '' }}">
+            </div>
+
+            <div class="form-group" style="margin-top: 20px;">
+                <label>Safe URL (Cloaking)</label>
+                <input type="url" name="safe_url" value="{{ link.safe_url or '' }}">
+            </div>
+
+            <div class="form-group">
+                <label>Password (Leave empty to keep, *** to see it's set)</label>
+                <input type="text" name="password" placeholder="{{ '***' if link.password_hash else '' }}">
+            </div>
+        </div>
+
+        <div id="scheduling" class="tab-content">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="form-group">
+                    <label>Start Active Hour</label>
+                    <input type="number" name="schedule_start_hour" min="0" max="23"
+                        value="{{ link.schedule_start_hour if link.schedule_start_hour is not none else '' }}">
+                </div>
+                <div class="form-group">
+                    <label>End Active Hour</label>
+                    <input type="number" name="schedule_end_hour" min="0" max="23"
+                        value="{{ link.schedule_end_hour if link.schedule_end_hour is not none else '' }}">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Timezone</label>
+                <input type="text" name="schedule_timezone" value="{{ link.schedule_timezone or 'UTC' }}">
+            </div>
+        </div>
+
+        <div id="limits" class="tab-content">
+            <div class="form-group">
+                <label>Max Clicks (0 = Unlimited)</label>
+                <input type="number" name="max_clicks" value="{{ link.max_clicks or 0 }}">
+            </div>
+            <div class="form-group">
+                <label>Expiration (Minutes)</label>
+                <input type="number" name="expiration_minutes" value="{{ link.expiration_minutes or 0 }}">
+            </div>
+        </div>
+
+        <div style="margin-top: 30px; border-top: var(--border); padding-top: 20px; text-align: right;">
+            <button type="submit" class="btn">SAVE CHANGES</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
