@@ -54,7 +54,7 @@ This project is optimized for deployment on [PythonAnywhere](https://www.pythona
 1.  Create a Web App (Flask -> Python 3.10+).
 2.  Open a **Bash Console** and clone your repo:
     ```bash
-    git clone https://github.com/YOUR_USER/stealth-shortener.git
+    git clone https://github.com/MN-company/ulrTrack.git
     cd stealth-shortener
     ```
 3.  Install dependencies:
