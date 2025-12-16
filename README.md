@@ -1,14 +1,31 @@
-# 🛡️ Advanced Stealth URL Shortener (V8)
+# 🛡️ Stealth URL Shortener (V8)
 
-A production-ready, security-focused URL Shortener built with **Flask**, **SQLAlchemy**, and **Python**.
-Designed for high-traffic environments requiring advanced traffic filtering, cloaking, and detailed analytics.
+**The Ultimate Traffic Control System for Grey-Hat Marketing.**
+
+Is your traffic being blocked by Facebook, Instagram, or TikTok because of "Suspicious Links"?
+**Stealth Shortener** solves this by making your links look like harmless 200 OK pages to bots, while safely delivering real users to your target.
+
+### 🆚 The Difference is Invisible
+
+| Others (Blocked) ❌ | stealth-shortener (Safe) ✅ |
+| :---: | :---: |
+| ![Others](others.png) | ![Ours](our.png) |
+| **302 Redirect** <br> Bots see the redirect immediately and scan your destination. | **200 OK + JS** <br> Bots see a blank page. Real users are redirected instantly via JavaScript. |
 
 ## ✨ Key Features
 
 ### 👻 Stealth & Cloaking
-- **HTTP 200 OK Redirects**: Uses a lightweight "Loading" page with JavaScript redirection to fool URL expanders/scanners that look for 30x headers.
-- **Smart Cloaking**: Automatically redirects suspicious traffic (Bots, VPNs, Crawlers) to a safe "fallback" URL (e.g., Google) while real users go to the target.
-- **Bot Detection**: Double-layer detection using Server-side User-Agent heuristics and Client-side `navigator.webdriver` beaconing.
+- **HTTP 200 OK Redirects**: Uses a lightweight "Loading" page with JavaScript redirection.
+- **Smart Cloaking**: Redirects suspicious traffic (Bots, VPNs) to a safe "fallback" URL (e.g., Google).
+- **Bot Detection**: Double-layer detection (User-Agent + Client-Side JS).
+
+### 🔬 Deep Technical Fingerprinting
+We collect advanced hardware data to identify unique users and bots:
+*   **Screen Resolution**: Width/Height (e.g., 1920x1080).
+*   **Color Depth**: 24-bit/32-bit.
+*   **Timezone**: Browser-reported caching zone.
+*   **Keyboard Layout**: (V9) Heuristic detection of physical keyboard locale.
+*   **AdBlock Status**: (V9) Detects if the user is blocking internal scripts.
 
 ### 🎭 URL Masking
 - **Double Shortening**: Automatically integrates with **is.gd** to mask your domain.

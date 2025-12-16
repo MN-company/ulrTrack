@@ -114,6 +114,9 @@ def create_link_flow():
         safe = questionary.text("Safe URL for Cloaking (Where to send blocked users?):", default="https://google.com").ask()
         if safe: payload["safe_url"] = safe
 
+        # V9 No-JS Policy
+        payload["allow_no_js"] = questionary.confirm("Allow users without JavaScript? (Less Stealth, More Reach)", default=False).ask()
+
     # 3. Security
     if "Security (Password / Captcha)" in features:
         console.print("[cyan]--- Access Control ---[/cyan]")
@@ -227,8 +230,11 @@ def edit_flow():
     if not selection or selection == "[🔙 BACK]": return
     slug = selection.split(" -> ")[0]
     
-    action = questionary.select("What to update?", choices=["Destination URL", "Max Clicks", "Password", "Delete Link"]).ask()
+    action = questionary.select("What to update?", choices=["Destination URL", "Max Clicks", "Password", "Delete Link", "[🔙 BACK]"]).ask()
     
+    if action == "[🔙 BACK]" or not action:
+        return
+
     if action == "Delete Link":
         if questionary.confirm(f"Really delete {slug}?", default=False).ask():
             requests.delete(f"{SERVER_URL}/api/links/{slug}", headers=get_headers())

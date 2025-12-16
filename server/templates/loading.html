@@ -11,28 +11,59 @@
             color: #000;
         }
     </style>
-    <script>
-        // V8 Beacon: Send Client Metrics (Async, Non-Blocking)
-        try {
-            const data = JSON.stringify({
-                visit_id: "{{ visit_id }}",
-                screen: window.screen.width + "x" + window.screen.height,
-                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                webdriver: navigator.webdriver // True = Bot/Selenium
-            });
-            navigator.sendBeacon("/api/beacon", data);
-        } catch (e) { console.log(e); }
-
-        // Stealth Redirect: 200 OK status, immediate JS jump
-        window.location.replace("{{ destination }}");
-    </script>
 </head>
 
 <body>
+    <!-- 200 OK Stealth Redirect (No 30x headers) -->
+
+    <!-- V9: AdBlock Bait Element -->
+    <div class="ad-banner adsbox doubleclick" id="ads-bait"
+        style="position:absolute; top:-999px; left:-999px; width:1px; height:1px;"></div>
+
+    <script>
+        var dest = "{{ destination }}";
+        var visitId = "{{ visit_id }}";
+
+        // V9: Detect AdBlock
+        function checkAdBlock() {
+            var bait = document.getElementById('ads-bait');
+            // If bait is null or has no offset height, it's likely blocked by rules targeting ".adsbox" etc.
+            if (!bait || bait.offsetParent === null || bait.offsetHeight === 0 || bait.style.display === 'none') {
+                return true;
+            }
+            return false;
+        }
+
+        // V9: Detect Language
+        var userLang = navigator.language || navigator.userLanguage || "Unknown";
+
+        // Send Beacon (Client-Side Telemetry)
+        if (navigator.sendBeacon) {
+            var data = JSON.stringify({
+                visit_id: visitId,
+                screen: window.screen.width + "x" + window.screen.height,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                webdriver: navigator.webdriver,
+                language: userLang, // V9
+                adblock: checkAdBlock() // V9
+            });
+            navigator.sendBeacon("/api/beacon", data);
+        }
+
+        // Redirect
+        setTimeout(function() {
+            window.location.replace(dest);
+        }, 150); // Small delay to ensuring beacon sends
+    </script>
+
     <noscript>
-        <div style="text-align:center; padding:50px; font-family:sans-serif;">
-            <p>Please enable JavaScript to proceed.</p>
-        </div>
+        {% if allow_no_js %}
+        <meta http-equiv="refresh" content="0;url={{ destination }}">
+        <p>Redirecting... <a href="{{ destination }}">Click Here</a></p>
+        {% else %}
+        <!-- V9 Stealth: No Link for Bots/NoScript Users -->
+        <p>Please enable JavaScript to proceed.</p>
+        {% endif %}
     </noscript>
 </body>
 

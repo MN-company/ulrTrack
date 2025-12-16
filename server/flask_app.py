@@ -46,7 +46,8 @@ class Link(db.Model):
     android_url = db.Column(db.String(2048), nullable=True)
     safe_url = db.Column(db.String(2048), nullable=True) # Cloaking URL
     block_vpn = db.Column(db.Boolean, default=False)
-    block_bots = db.Column(db.Boolean, default=True) # Default BLOCK bots
+    block_bots = db.Column(db.Boolean, default=True)
+    allow_no_js = db.Column(db.Boolean, default=False) # V9: If True, show link in noscript. If False, strict blocking. # Default BLOCK bots
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     visits = db.relationship('Visit', backref='link', lazy=True)
@@ -71,10 +72,12 @@ class Visit(db.Model):
     lat = db.Column(db.Float)
     lon = db.Column(db.Float)
     
-    # Client-Side Beacon Data (V8)
+    # Client-Side Beacon Data (V8/V9)
     screen_res = db.Column(db.String(32))
     timezone = db.Column(db.String(64))
-    browser_bot = db.Column(db.Boolean, default=False) # True if navigator.webdriver check fails
+    browser_bot = db.Column(db.Boolean, default=False)
+    browser_language = db.Column(db.String(10)) # V9
+    adblock = db.Column(db.Boolean, default=False) # V9
 
 # --- Helpers ---
 def is_bot_ua(ua_string):
@@ -229,7 +232,8 @@ def redirect_to_url(slug):
     # V8 Stealth Mode: Return 200 OK with JS Redirect
     # This fools URL expanders that look for 30x headers.
     # We pass visit.id to allow the client to send back a Beacon (Screen Res, etc.)
-    return render_template('loading.html', destination=final_dest, visit_id=visit.id)
+    # V8 Stealth/V9 Features: Pass allow_no_js to template
+    return render_template('loading.html', destination=final_dest, visit_id=visit.id, allow_no_js=link.allow_no_js)
 
 @app.route('/api/beacon', methods=['POST'])
 def receive_beacon():
@@ -241,11 +245,14 @@ def receive_beacon():
             if v_id:
                 visit = Visit.query.get(v_id)
                 if visit:
-                    visit.screen_res = data.get('screen')
-                    visit.timezone = data.get('timezone')
-                    visit.browser_bot = data.get('webdriver', False)
+                    visit.screen_res = data.get('screen', 'Unknown')
+                    visit.timezone = data.get('timezone', 'Unknown')
+                    visit.browser_bot = bool(data.get('webdriver', False))
+                    visit.browser_language = data.get('language', 'Unknown') # V9
+                    visit.adblock = bool(data.get('adblock', False)) # V9
+                    
                     db.session.commit()
-                    print(f"BEACON SAVED: ID={v_id} Screen={visit.screen_res} Bot={visit.browser_bot}")
+                    print(f"BEACON SAVED: ID={v_id} Screen={visit.screen_res} Lang={visit.browser_language} AdBlock={visit.adblock}")
     except Exception as e:
         print(f"Beacon Error: {e}")
     return "OK", 200
@@ -340,7 +347,8 @@ def create_link():
         android_url=data.get('android_url'),
         safe_url=data.get('safe_url'),
         block_vpn=data.get('block_vpn', False), # Explicit opt-in
-        block_bots=data.get('block_bots', True) # Default BLOCK
+        block_bots=data.get('block_bots', True), # Default BLOCK
+        allow_no_js=data.get('allow_no_js', False) # V9
     )
     db.session.add(new_link)
     db.session.commit()
