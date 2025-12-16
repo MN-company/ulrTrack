@@ -1,6 +1,8 @@
 flask
-flask-sqlalchemy
-requests
+flask_sqlalchemy
 gunicorn
 python-dotenv
 user-agents
+requests
+flask-limiter
+pytz

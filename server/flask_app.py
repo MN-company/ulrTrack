@@ -1,5 +1,8 @@
 from flask import Flask, request, redirect, render_template, abort, jsonify, make_response
 from flask_sqlalchemy import SQLAlchemy
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+import pytz # V10
 from datetime import datetime
 import os
 import requests
@@ -19,6 +22,15 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 db_path = os.path.join(basedir, 'shortener.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', f'sqlite:///{db_path}')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# V11: Internal Firewall (Rate Limiting)
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["120 per minute"], # Global Limit
+    storage_uri="memory://"
+)
+
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default_dev_secret')
 API_KEY = os.getenv('API_KEY', 'changeme')
 
@@ -47,7 +59,12 @@ class Link(db.Model):
     safe_url = db.Column(db.String(2048), nullable=True) # Cloaking URL
     block_vpn = db.Column(db.Boolean, default=False)
     block_bots = db.Column(db.Boolean, default=True)
-    allow_no_js = db.Column(db.Boolean, default=False) # V9: If True, show link in noscript. If False, strict blocking. # Default BLOCK bots
+    allow_no_js = db.Column(db.Boolean, default=False)
+    
+    # V10: Smart Scheduling
+    schedule_start_hour = db.Column(db.Integer, nullable=True) # 0-23
+    schedule_end_hour = db.Column(db.Integer, nullable=True)   # 0-23
+    schedule_timezone = db.Column(db.String(32), default='UTC')
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     visits = db.relationship('Visit', backref='link', lazy=True)
@@ -160,6 +177,32 @@ def redirect_to_url(slug):
     is_vpn = False
     tracking_note = None # Initialize tracking_note
     
+    # V10: Smart Scheduling (Time Cloaking)
+    if link.schedule_start_hour is not None and link.schedule_end_hour is not None:
+        try:
+            tz = pytz.timezone(link.schedule_timezone or 'UTC')
+            now_hour = datetime.now(tz).hour
+            # Check if OUTSIDE active hours
+            # Example: Start=8, End=20. Active [8...19]. Safe [20...7].
+            # Simple handle: Start < End (Day shift) vs Start > End (Night shift)
+            is_safe_time = False
+            if link.schedule_start_hour < link.schedule_end_hour:
+                if link.schedule_start_hour <= now_hour < link.schedule_end_hour:
+                    is_safe_time = True
+            else: # Night shift (e.g. 20 to 08)
+                if now_hour >= link.schedule_start_hour or now_hour < link.schedule_end_hour:
+                    is_safe_time = True
+            
+            if not is_safe_time:
+                print(f"DEBUG SCHEDULE: Outside active hours ({now_hour} not in {link.schedule_start_hour}-{link.schedule_end_hour}). Redirecting to Safe.")
+                tracking_note = "Schedule -> Safe"
+                final_dest = link.safe_url or "https://google.com"
+                # Proceed to render loading.html with Safe URL
+                # We skip VPN checks if already safe? Maybe strictly block VPNs anyway. 
+                # Let's continues checks but override final_dest.
+        except Exception as e:
+            print(f"Schedule Error: {e}")
+
     # DEBUG: Print exact state
     print(f"DEBUG CHECKS: Slug={slug} BlockVPN={link.block_vpn} BlockBots={link.block_bots}")
     print(f"DEBUG GEO: Proxy={geo.get('proxy')} ({type(geo.get('proxy'))}) Hosting={geo.get('hosting')}")
@@ -300,6 +343,7 @@ def verify_captcha_route():
 # --- API ---
 
 @app.route('/api/create', methods=['POST'])
+@limiter.limit("10 per minute") # Strict Limit for creations
 def create_link():
     key = request.headers.get('X-API-KEY')
     if key != API_KEY:
@@ -348,7 +392,10 @@ def create_link():
         safe_url=data.get('safe_url'),
         block_vpn=data.get('block_vpn', False), # Explicit opt-in
         block_bots=data.get('block_bots', True), # Default BLOCK
-        allow_no_js=data.get('allow_no_js', False) # V9
+        allow_no_js=data.get('allow_no_js', False), # V9
+        schedule_start_hour=data.get('schedule_start_hour'), # V10
+        schedule_end_hour=data.get('schedule_end_hour'),     # V10
+        schedule_timezone=data.get('schedule_timezone', 'UTC')
     )
     db.session.add(new_link)
     db.session.commit()

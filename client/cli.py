@@ -89,6 +89,7 @@ def create_link_flow():
             "Protection (VPN/Bot Checking + Cloaking)",
             "Security (Password / Captcha)",
             "Limits (Expiration / Max Clicks)",
+            "Scheduling", # V10
             "QR Code Generation"
         ]
     ).ask()
@@ -145,6 +146,21 @@ def create_link_flow():
 
         expire = questionary.text("Expiration (minutes, 0 for unlimited):").ask()
         if expire and expire != "0": payload["expiration_minutes"] = int(expire)
+
+        if expire and expire != "0": payload["expiration_minutes"] = int(expire)
+
+    # V10: Scheduling
+    if "Scheduling" in features:
+        console.print("[cyan]--- Smart Scheduling (Time Cloaking) ---[/cyan]")
+        start = questionary.text("Start Active Hour (0-23, e.g. 9):").ask()
+        end = questionary.text("End Active Hour (0-23, e.g. 17):").ask()
+        if start and end:
+            try:
+                payload["schedule_start_hour"] = int(start)
+                payload["schedule_end_hour"] = int(end)
+                payload["schedule_timezone"] = questionary.text("Timezone (e.g. UTC, Europe/Rome):", default="UTC").ask()
+            except:
+                console.print("[red]Invalid hours. Scheduling skipped.[/red]")
 
     # API Call
     try:
