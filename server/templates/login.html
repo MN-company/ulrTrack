@@ -12,14 +12,11 @@
             </div>
 
             <!-- Fake Captcha for V1 Visuals (User requested layout) -->
-            <div
-                style="margin-bottom: 20px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px; border: var(--border); display: flex; align-items: center; justify-content: center; gap: 10px;">
-                <input type="checkbox" required id="human" style="width: 20px;">
-                <input type="checkbox" name="fake_captcha" required style="display: none;">
-                <label for="human" style="font-size: 0.9rem; color: var(--text-sec);">I am human</label>
-            </div>
+            <!-- Real Cloudflare Turnstile -->
+            <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+            <div class="cf-turnstile" data-sitekey="{{ site_key }}" data-theme="dark"></div>
 
-            <button type="submit" class="btn" style="width: 100%;">ENTER DASHBOARD</button>
+            <button type="submit" class="btn" style="width: 100%; margin-top: 20px;">ENTER DASHBOARD</button>
 
             <div style="margin-top: 20px; text-align: center; color: var(--text-sec); font-size: 0.8rem;">
                 <i class="fas fa-shield-alt"></i> Protected by Cloudflare

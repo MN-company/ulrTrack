@@ -588,12 +588,13 @@ def login():
     if request.method == 'POST':
         key = request.form.get('api_key')
         if key == API_KEY:
+            # Optional: Add Turnstile verification here if strict
             user = User("admin")
             login_user(user)
             return redirect('/dashboard')
         else:
             flash('Access Denied: Invalid Key', 'error')
-    return render_template('login.html')
+    return render_template('login.html', site_key=TURNSTILE_SITE_KEY)
 
 @app.route('/logout')
 @login_required

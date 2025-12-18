@@ -1,16 +1,10 @@
-import os
 import sys
-from pathlib import Path
-from dotenv import load_dotenv
-
-# Add current directory to path
-path = os.path.expanduser('~/mysite') # PythonAnywhere default usually matches repo name or setup
-if path not in sys.path:
-    sys.path.append(path)
-
-# Load environment variables
-project_folder = os.path.expanduser('~/mysite')  # adjust as appropriate
-load_dotenv(os.path.join(project_folder, '.env'))
-
-# Import FastAPI app
-from main import app as application
+import os
+# 1. Point to your actual server folder
+project_home = '/home/mncompany/mysite/ulrTrack/server'
+if project_home not in sys.path:
+    sys.path = [project_home] + sys.path
+# 2. Switch to that directory so .env and database are found
+os.chdir(project_home)
+# 3. Import your app (flask_app.py)
+from flask_app import app as application
