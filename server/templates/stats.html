@@ -70,11 +70,9 @@
                 <th>Time</th>
                 <th>IP</th>
                 <th>ISP</th>
-                <th>Country</th>
-                <th>Device</th>
-                <th>Lang</th>
-                <th>Screen</th>
+                <th>Device (AI)</th>
                 <th>Status</th>
+                <th>UA (Hover)</th>
             </tr>
         </thead>
         <tbody>
@@ -83,14 +81,16 @@
                 <td class="mono">{{ v.timestamp.strftime('%H:%M:%S %d/%m') }}</td>
                 <td class="mono">{{ v.ip_address }}</td>
                 <td>{{ v.isp or '-' }}</td>
-                <td><span class="badge badge-gray">{{ v.country or 'XX' }}</span></td>
-                <td>
-                    {% if v.is_mobile %}<i class="fas fa-mobile-alt"></i>{% else %}<i class="fas fa-desktop"></i>{%
-                    endif %}
-                    {{ v.os }}
+
+                <!-- V15 AI Column -->
+                <td class="mono" style="color: var(--accent); font-weight:bold;">
+                    {% if v.ai_summary %}
+                    <i class="fas fa-robot"></i> {{ v.ai_summary }}
+                    {% else %}
+                    <span style="opacity:0.3;">Processing...</span>
+                    {% endif %}
                 </td>
-                <td class="mono" style="font-size:0.8rem;">{{ v.browser_language or '-' }}</td>
-                <td class="mono" style="font-size:0.8rem;">{{ v.screen_res or '-' }}</td>
+
                 <td>
                     {% if v.adblock %}<span class="badge badge-red">ADB</span>{% endif %}
                     {% if v.is_vpn %}
@@ -100,6 +100,10 @@
                     {% else %}
                     <span class="badge badge-green">OK</span>
                     {% endif %}
+                </td>
+                <td title="{{ v.user_agent }}"
+                    style="max-width: 50px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: help;">
+                    ℹ️
                 </td>
             </tr>
             {% endfor %}
