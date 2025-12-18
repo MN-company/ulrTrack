@@ -61,7 +61,8 @@ PROXYCHECK_API_KEY = os.getenv('PROXYCHECK_API_KEY', '')
 db = SQLAlchemy(app)
 
 # V15: High Performance SQLite (WAL Mode)
-@event.listens_for(db.engine, "connect")
+from sqlalchemy.engine import Engine
+@event.listens_for(Engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA journal_mode=WAL")
