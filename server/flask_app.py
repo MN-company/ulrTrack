@@ -106,7 +106,8 @@ class Link(db.Model):
     # V16: Email Gate
     require_email = db.Column(db.Boolean, default=False)
     
-    # Linked dynamically to Visits
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    visits = db.relationship('Visit', backref='link', lazy=True)
 
 # V17/V18: Leads & Contacts
 class Lead(db.Model):
