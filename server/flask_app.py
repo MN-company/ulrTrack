@@ -10,7 +10,7 @@ import queue
 import atexit
 import atexit
 import orjson # Fast JSON
-from google import genai # V16 Fix: New SDK
+# from google import genai -- Lazy loaded in worker to prevent Init errors
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
@@ -171,6 +171,9 @@ def worker():
                     visit = Visit.query.get(v_id)
                     if visit and GEMINI_API_KEY:
                         try:
+                            # Lazy Import to handle environment issues gracefully
+                            from google import genai
+                            
                             client = genai.Client(api_key=GEMINI_API_KEY)
                             prompt = f"Identify the specific device model from UserAgent: '{ua}' and Screen Resolution: '{screen}'. Return ONLY the device name (e.g. 'Samsung Galaxy S23 Ultra'). If unsure, guess based on screen ratio. Keep it under 50 chars."
                             
@@ -181,6 +184,8 @@ def worker():
                             visit.ai_summary = response.text.strip()
                             db.session.commit()
                             print(f"AI ANALYSIS: {visit.ai_summary}")
+                        except ImportError:
+                            print("AI Error: google-genai library not found.")
                         except Exception as e:
                             print(f"AI Error: {e}")
 
