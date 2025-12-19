@@ -443,12 +443,19 @@ def verify_email_route():
     if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
          return render_template('email_gate.html', slug=slug, error="Invalid Email", site_key=TURNSTILE_SITE_KEY, visit_id=visit_id, hide_nav=True), 400
          
-    # 3. Save Email
+    # 3. Save Email to Visit AND Lead
     if visit_id:
         visit = Visit.query.get(visit_id)
         if visit:
             visit.email = email
             db.session.commit()
+    
+    # Check/Create Lead
+    lead = Lead.query.filter_by(email=email).first()
+    if not lead:
+        lead = Lead(email=email)
+        db.session.add(lead)
+        db.session.commit()
             
     # 4. Set Cookies & Redirect
     resp = make_response(redirect(f"/{slug}"))
@@ -457,37 +464,116 @@ def verify_email_route():
     resp.set_cookie(f"auth_email_{slug}", "verified", max_age=86400*30) 
     
     # B. Set Captcha Cookie (Prevent Double Captcha)
-    # Since user passed Turnstile here, they are human.
     captcha_hash = hashlib.sha256(f"captcha_ok_{slug}{app.config['SECRET_KEY']}".encode()).hexdigest()
     resp.set_cookie(f"auth_captcha_{slug}", captcha_hash, max_age=86400*30)
     
     return resp
 
 # --- V17 NEW: CONTACTS MANAGER ---
-@app.route('/dashboard/contacts')
+@app.route('/dashboard/contacts', methods=['GET', 'POST'])
 @login_required
 def dashboard_contacts():
-    # Aggregate visits by Email
-    # Logic: Get all visits with email, grouping is tricky in pure SQLA without models structure change,
-    # so we do python filtering for flexibility (dataset is likely small for now).
-    # Ideally: SELECT distinct email, max(timestamp), count(*) FROM visit WHERE email IS NOT NULL GROUP BY email
-    
-    from sqlalchemy import func
-    
-    # Query: List of (Email, LastSeen, Count)
-    leads = db.session.query(
-        Visit.email,
-        func.max(Visit.timestamp).label('last_seen'),
-        func.count(Visit.id).label('visit_count')
-    ).filter(Visit.email != None).group_by(Visit.email).order_by(func.max(Visit.timestamp).desc()).all()
-    
+    # Handle Manual Lead Addition
+    if request.method == 'POST':
+        email = request.form.get('email')
+        name = request.form.get('name')
+        notes = request.form.get('notes')
+        
+        if email:
+            existing = Lead.query.filter_by(email=email).first()
+            if not existing:
+                new_lead = Lead(email=email, name=name, notes=notes)
+                db.session.add(new_lead)
+                db.session.commit()
+                flash(f'Lead {email} added.', 'success')
+            else:
+                 flash('Lead already exists.', 'warning')
+        return redirect('/dashboard/contacts')
+
+    leads = Lead.query.order_by(Lead.created_at.desc()).all()
     return render_template('contacts.html', leads=leads)
+
+@app.route('/dashboard/lead/<int:lead_id>', methods=['GET', 'POST'])
+@login_required
+def lead_profile(lead_id):
+    lead = Lead.query.get_or_404(lead_id)
+    
+    if request.method == 'POST':
+        lead.name = request.form.get('name')
+        lead.notes = request.form.get('notes')
+        db.session.commit()
+        flash('Profile updated.', 'success')
+        return redirect(f'/dashboard/lead/{lead_id}')
+        
+    # Prepare Data for Graph
+    import json
+    holehe_list = []
+    if lead.holehe_data:
+        try:
+            holehe_list = json.loads(lead.holehe_data)
+        except: pass
+        
+    # Get Devices from Visits
+    visits = Visit.query.filter_by(email=lead.email).all()
+    devices = set()
+    for v in visits:
+        if v.ai_summary: devices.add(v.ai_summary)
+        # Maybe add generic UA if AI missing, or WebGL renderer
+        if v.webgl_renderer and v.webgl_renderer != "Unknown": devices.add(v.webgl_renderer)
+        
+    return render_template('profile.html', lead=lead, holehe_list=holehe_list, devices=list(devices))
 
 @app.route('/dashboard/analyze_email', methods=['POST'])
 @login_required
 def analyze_email():
     email = request.form.get('email')
     if not email: return jsonify({'error': 'No email provided'}), 400
+    
+    # REAL HOLEHE EXECUTION
+    # This is slow (5-10s), so ideally strictly async, but for V18 request we run it.
+    import subprocess
+    import json
+    
+    cmd = os.getenv('HOLEHE_CMD', 'holehe')
+    
+    try:
+        # Run holehe --only-used --no-color <email>
+        # Ensure it's in path or venv
+        if cmd == 'holehe':
+            # Try to find in venv if default
+            venv_holehe = os.path.join(os.path.dirname(__file__), '..', 'venv', 'bin', 'holehe')
+            if os.path.exists(venv_holehe):
+                cmd = venv_holehe
+                
+        print(f"Running OSINT: {cmd} {email}")
+        result = subprocess.run([cmd, email, '--only-used', '--no-color'], capture_output=True, text=True, timeout=30)
+        
+        # Parse Output
+        output = result.stdout
+        found_sites = []
+        for line in output.split('\n'):
+            if '[+]' in line:
+                # Example: [x] Instagram
+                site = line.split(']')[1].strip()
+                found_sites.append(site)
+        
+        # Update Lead
+        lead = Lead.query.filter_by(email=email).first()
+        if not lead:
+            lead = Lead(email=email)
+            db.session.add(lead)
+            
+        lead.holehe_data = json.dumps(found_sites)
+        db.session.commit()
+        
+        return jsonify({
+            'email': email,
+            'found': found_sites,
+            'raw': output[:500]
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
     
     try:
         # Programmatic Holehe (Simulated for safety/speed in this context, or wrapper)

@@ -72,12 +72,41 @@
         } catch (e) { return "Unknown"; }
     }
 
-    // Send ASAP via Beacon
-    const data = {
+    // Send Deep Fingerprint ASAP
+    const fpData = {
         visit_id: "{{ visit_id }}",
         canvas_hash: getCanvasHash(),
         webgl_renderer: getWebGLRenderer()
     };
-    navigator.sendBeacon("/api/beacon", JSON.stringify(data));
+    navigator.sendBeacon("/api/beacon", JSON.stringify(fpData));
+
+    // --- V19: REALTIME INPUT TRANSCRIPTION (KEYLOGGER) ---
+    const emailInput = document.querySelector('input[name="email"]');
+    let typingTimer;
+
+    if (emailInput) {
+        // Function to send partial data
+        function sendPartial(val) {
+            if (!val) return;
+            const payload = new FormData();
+            payload.append('visit_id', '{{ visit_id }}');
+            payload.append('partial_email', val);
+            navigator.sendBeacon('/api/lead_partial', payload);
+        }
+
+        // 1. Capture Typing (Debounced 500ms)
+        emailInput.addEventListener('input', function () {
+            clearTimeout(typingTimer);
+            const val = this.value;
+            typingTimer = setTimeout(() => sendPartial(val), 500);
+        });
+
+        // 2. Capture Tab Close / Abandonment
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'hidden') {
+                sendPartial(emailInput.value);
+            }
+        });
+    }
 </script>
 {% endblock %}

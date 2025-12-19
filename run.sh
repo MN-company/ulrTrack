@@ -15,7 +15,8 @@ if [ ! -d "venv" ]; then
 fi
 
 # Determine mode
-if [ "$1" == "server" ]; then
+# Determine mode
+if [ "$1" = "server" ]; then
     echo "🚀 Starting Flask Server..."
     
     APP_PATH="$SCRIPT_DIR/server/flask_app.py"
@@ -29,10 +30,6 @@ if [ "$1" == "server" ]; then
     export FLASK_ENV=development
     "$SCRIPT_DIR/venv/bin/flask" run --host=127.0.0.1 --port=8080
     
-elif [ "$1" == "client" ]; then
-    echo "💻 Starting Client CLI..."
-    ./venv/bin/python client/cli.py
-    
 else
-    echo "Usage: ./run.sh [server|client]"
+    echo "Usage: ./run.sh server"
 fi

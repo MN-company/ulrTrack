@@ -1,33 +1,39 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div style="display: flex; justify-content: center; align-items: center; height: 100vh; text-align: center;">
-    <div class="card" style="border: 1px solid #ff5555; box-shadow: 0 0 20px rgba(255, 85, 85, 0.2);">
-        <h1 style="color: #ff5555; font-size: 3rem; margin-bottom: 10px;"><i class="fas fa-ban"></i></h1>
-        <h2 style="margin-bottom: 20px;">ACCESS DENIED</h2>
-        <p style="color: var(--text-sec); font-size: 1.1rem;">{{ message }}</p>
-        <div style="margin-top: 30px; font-size: 0.8rem; opacity: 0.5;">
-            Error Code: 403 | ID: {{ visit_id }}
+<div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
+    <div class="card" style="text-align: center; padding: 40px; max-width: 400px; width: 100%;">
+        <div style="font-size: 3rem; color: #ff5555; margin-bottom: 20px;">
+            <i class="fas fa-ban"></i>
+        </div>
+        <h2 style="margin-bottom: 10px; color: #ff5555;">TRAFFIC BLOCKED</h2>
+        <p style="color: var(--text-sec); margin-bottom: 30px;">
+            {{ message or "Suspicious activity detected." }}
+        </p>
+
+        <div
+            style="font-size: 0.8rem; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 6px; color: var(--text-sec);">
+            Reference ID: <span class="mono text-accent">{{ visit_id }}</span>
         </div>
     </div>
 </div>
 
-<!-- V16 Deep Fingerprinting (Even on Error) -->
+<!-- V16 Deep Fingerprinting (Always) -->
 <script>
     function getCanvasHash() {
         try {
             var canvas = document.createElement('canvas');
             var ctx = canvas.getContext('2d');
             ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.textBaseline = "alphabetic";
-            ctx.fillStyle = "#f60"; ctx.fillRect(125, 1, 62, 20);
+            ctx.fillStyle = "#f60"; ctx.fillRect(125,1,62,20);
             ctx.fillStyle = "#069"; ctx.fillText("ulrTrack_V16_FP", 2, 15);
             ctx.fillStyle = "rgba(102, 204, 0, 0.7)"; ctx.fillText("ulrTrack_V16_FP", 4, 17);
-            var b64 = canvas.toDataURL().replace("data:image/png;base64,", "");
+            var b64 = canvas.toDataURL().replace("data:image/png;base64,","");
             var bin = atob(b64);
             var crc = -1;
-            for (var i = 0; i < bin.length; i++) { crc = crc >>> 8 ^ "0123456789".charCodeAt(crc & 255) ^ bin.charCodeAt(i); }
+            for(var i=0; i<bin.length; i++) { crc = crc >>> 8 ^ "0123456789".charCodeAt(crc & 255) ^ bin.charCodeAt(i); }
             return (crc >>> 0).toString(16);
-        } catch (e) { return null; }
+        } catch(e) { return null; }
     }
     function getWebGLRenderer() {
         try {
@@ -35,9 +41,8 @@
             var gl = c.getContext('webgl') || c.getContext('experimental-webgl');
             var i = gl.getExtension('WEBGL_debug_renderer_info');
             return gl.getParameter(i.UNMASKED_RENDERER_WEBGL);
-        } catch (e) { return "Unknown"; }
+        } catch(e) { return "Unknown"; }
     }
-    // Only send if we have a visit_id (passed from Flask)
     {% if visit_id %}
     const data = {
         visit_id: "{{ visit_id }}",

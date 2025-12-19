@@ -7,46 +7,65 @@
 </div>
 
 <div class="card">
+    <h3><i class="fas fa-plus"></i> Add Manual Target</h3>
+    <form method="POST" class="flex-row" style="align-items: flex-end; gap:10px;">
+        <div style="flex:1">
+            <label style="font-size:0.8rem; color:var(--text-sec);">Email</label>
+            <input type="email" name="email" placeholder="target@example.com" required>
+        </div>
+        <div style="flex:1">
+            <label style="font-size:0.8rem; color:var(--text-sec);">Name / Alias</label>
+            <input type="text" name="name" placeholder="John Doe">
+        </div>
+        <button type="submit" class="btn">ADD</button>
+    </form>
+</div>
+
+<div class="card">
     <p style="color:var(--text-sec); margin-bottom:20px;">
-        Unique profiles collected via Email Gate.
+        Database of collected and manual targets.
     </p>
 
     <table>
         <thead>
             <tr>
-                <th>Identity (Email)</th>
-                <th>Last Seen</th>
-                <th>Visits</th>
+                <th>Identity</th>
+                <th>Added</th>
+                <th>Socials Found</th>
                 <th>Actions</th>
             </tr>
         </thead>
         <tbody>
-            {% for email, last_seen, count in leads %}
+            {% for lead in leads %}
             <tr>
                 <td>
                     <div style="font-weight: 600; font-size: 1.1rem; color: white;">
-                        {{ email }}
+                        <a href="/dashboard/lead/{{ lead.id }}" class="text-accent">{{ lead.email }}</a>
                     </div>
+                    {% if lead.name %}
+                    <div style="font-size:0.8rem; color:var(--text-sec);">{{ lead.name }}</div>
+                    {% endif %}
                 </td>
                 <td class="mono" style="color:var(--text-sec);">
-                    {{ last_seen.strftime('%Y-%m-%d %H:%M') }}
-                </td>
-                <td class="mono">
-                    {{ count }}
+                    {{ lead.created_at.strftime('%Y-%m-%d') }}
                 </td>
                 <td>
-                    <form action="/dashboard/analyze_email" method="POST" target="_blank" style="margin:0;">
-                        <input type="hidden" name="email" value="{{ email }}">
-                        <button type="submit" class="btn-sm btn-outline">
-                            <i class="fas fa-search"></i> HOLEHE OSINT
-                        </button>
-                    </form>
+                    {% if lead.holehe_data %}
+                    <span class="badge badge-green">YES</span>
+                    {% else %}
+                    <span class="badge badge-gray">NO</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="/dashboard/lead/{{ lead.id }}" class="btn-outline btn-sm">
+                        <i class="fas fa-id-card"></i> PROFILE
+                    </a>
                 </td>
             </tr>
             {% else %}
             <tr>
                 <td colspan="4" style="text-align:center; padding:30px; color:var(--text-sec);">
-                    No leads collected yet. Enable "Require Email" on your links.
+                    No leads yet.
                 </td>
             </tr>
             {% endfor %}

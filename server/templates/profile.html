@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block head %}
+<script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+<style>
+    #network {
+        width: 100%;
+        height: 500px;
+        background: rgba(0, 0, 0, 0.3);
+        border: var(--border);
+        border-radius: 12px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2><i class="fas fa-user-secret"></i> Profile: <span class="text-accent">{{ lead.email }}</span></h2>
+    <a href="/dashboard/contacts" class="btn-outline">Back</a>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px;">
+
+    <!-- Left: Info -->
+    <div class="card">
+        <h3>Details</h3>
+        <form method="POST">
+            <div class="form-group">
+                <label>Name / Alias</label>
+                <input type="text" name="name" value="{{ lead.name or '' }}" placeholder="Unknown">
+            </div>
+
+            <div class="form-group" style="margin-top:15px;">
+                <label>Notes</label>
+                <textarea name="notes"
+                    style="width:100%; background:rgba(0,0,0,0.3); color:white; border:var(--border); border-radius:6px; padding:10px; min-height:100px;">{{ lead.notes or '' }}</textarea>
+            </div>
+
+            <button type="submit" class="btn" style="margin-top:10px;">SAVE NOTES</button>
+        </form>
+
+        <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin: 20px 0;">
+
+        <h4>OSINT Status</h4>
+        {% if lead.holehe_data %}
+        <div style="margin-top:10px;">
+            {% for site in holehe_list %}
+            <span class="badge badge-green" style="margin-right:5px; margin-bottom:5px; display:inline-block;">{{ site
+                }}</span>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="color:var(--text-sec); font-size:0.9rem;">No analysis run yet.</p>
+        {% endif %}
+
+        <form action="/dashboard/analyze_email" method="POST" target="_blank" style="margin-top:15px;">
+            <input type="hidden" name="email" value="{{ lead.email }}">
+            <!-- We should handle redirect back here ideally, for now separate tab -->
+            <button type="submit" class="btn-outline" style="width:100%;"><i class="fas fa-search"></i> RUN HOLEHE
+                SCAN</button>
+        </form>
+    </div>
+
+    <!-- Right: Graph -->
+    <div class="card">
+        <h3>Intelligence Graph</h3>
+        <div id="network"></div>
+    </div>
+</div>
+
+<script type="text/javascript">
+    // Data Nodes
+    var nodes = new vis.DataSet([
+        { id: 1, label: '{{ lead.email }}', color: '#00ff9d', shape: 'box', font: { color: 'black' } }
+    ]);
+
+    // Edges
+    var edges = new vis.DataSet([]);
+
+    var nodeId = 2;
+
+    // Add Socials
+    {% for site in holehe_list %}
+    nodes.add({ id: nodeId, label: '{{ site }}', color: '#00ccff', shape: 'ellipse' });
+    edges.add({ from: 1, to: nodeId });
+    nodeId++;
+    {% endfor %}
+
+    // Add Hardware (from Visits - passed via template)
+    {% for dev in devices %}
+    nodes.add({ id: nodeId, label: '{{ dev }}', color: '#ffcc00', shape: 'diamond' });
+    edges.add({ from: 1, to: nodeId });
+    nodeId++;
+    {% endfor %}
+
+    var container = document.getElementById('network');
+    var data = { nodes: nodes, edges: edges };
+    var options = {
+        nodes: {
+            borderWidth: 2,
+            shadow: true
+        },
+        physics: {
+            stabilization: false,
+            barnesHut: {
+                gravitationalConstant: -2000,
+                springLength: 150
+            }
+        }
+    };
+    var network = new vis.Network(container, data, options);
+</script>
+
+{% endblock %}
