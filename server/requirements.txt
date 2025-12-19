@@ -10,5 +10,5 @@ flask-login
 segno
 Pillow
 orjson
-google-generativeai
+google-genai
 holehe

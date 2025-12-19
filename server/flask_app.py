@@ -8,8 +8,9 @@ import segno
 import threading
 import queue
 import atexit
+import atexit
 import orjson # Fast JSON
-import google.generativeai as genai # AI
+from google import genai # V16 Fix: New SDK
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
@@ -34,8 +35,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # V15: Gemini AI Key
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+# New SDK uses Client instance, configured locally where needed.
 
 # V11: Internal Firewall (Rate Limiting)
 limiter = Limiter(
@@ -164,16 +164,20 @@ def worker():
                     print(f"ASYNC LOG: Visit Saved ID={visit.id}")
                 
                 elif task['type'] == 'ai_analyze':
-                    # Run Gemini
+                    # Run Gemini (New SDK)
                     v_id = task['visit_id']
                     ua = task['ua']
                     screen = task['screen']
                     visit = Visit.query.get(v_id)
                     if visit and GEMINI_API_KEY:
-                        model = genai.GenerativeModel('gemini-1.5-flash')
-                        prompt = f"Identify the specific device model from UserAgent: '{ua}' and Screen Resolution: '{screen}'. Return ONLY the device name (e.g. 'Samsung Galaxy S23 Ultra'). If unsure, guess based on screen ratio. Keep it under 50 chars."
                         try:
-                            response = model.generate_content(prompt)
+                            client = genai.Client(api_key=GEMINI_API_KEY)
+                            prompt = f"Identify the specific device model from UserAgent: '{ua}' and Screen Resolution: '{screen}'. Return ONLY the device name (e.g. 'Samsung Galaxy S23 Ultra'). If unsure, guess based on screen ratio. Keep it under 50 chars."
+                            
+                            response = client.models.generate_content(
+                                model='gemini-1.5-flash',
+                                contents=prompt
+                            )
                             visit.ai_summary = response.text.strip()
                             db.session.commit()
                             print(f"AI ANALYSIS: {visit.ai_summary}")
