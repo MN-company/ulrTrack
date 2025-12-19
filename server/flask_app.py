@@ -60,14 +60,14 @@ PROXYCHECK_API_KEY = os.getenv('PROXYCHECK_API_KEY', '')
 
 db = SQLAlchemy(app)
 
-# V15: High Performance SQLite (WAL Mode)
-from sqlalchemy.engine import Engine
-@event.listens_for(Engine, "connect")
-def set_sqlite_pragma(dbapi_connection, connection_record):
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA journal_mode=WAL")
-    cursor.execute("PRAGMA synchronous=NORMAL") # Faster writes
-    cursor.close()
+# V15: High Performance SQLite (WAL Mode) - DISABLED for PythonAnywhere (NFS I/O Error)
+# from sqlalchemy.engine import Engine
+# @event.listens_for(Engine, "connect")
+# def set_sqlite_pragma(dbapi_connection, connection_record):
+#     cursor = dbapi_connection.cursor()
+#     cursor.execute("PRAGMA journal_mode=WAL")
+#     cursor.execute("PRAGMA synchronous=NORMAL") # Faster writes
+#     cursor.close()
 
 # --- Models ---
 class Link(db.Model):
@@ -258,11 +258,29 @@ def verify_turnstile(token, ip):
 
 # ... (Routes) ...
 
+# V16 Performance: In-Memory Cache (Compensates for no WAL)
+# Structure: {slug: {'link': LinkObject, 'timestamp': time}}
+LINK_CACHE = {}
+CACHE_TTL = 60 # seconds
+
 @app.route('/<slug>', methods=['GET'])
 def redirect_to_url(slug):
-    link = Link.query.filter_by(slug=slug).first_or_404()
+    # 1. Cache Lookup
+    cached = LINK_CACHE.get(slug)
+    link = None
+    if cached and (datetime.utcnow().timestamp() - cached['timestamp'] < CACHE_TTL):
+        link = cached['link']
+        # Even with cache, we need the object attached to session? 
+        # SQLAlchemy objects detached from session can be tricky.
+        # Ideally we merge it back or just use the cached attributes.
+        # But for 'visit.link_id', we just need ID.
     
-    # --- 1. GATHER DATA (Before any decision) ---
+    if not link:
+        link = Link.query.filter_by(slug=slug).first_or_404()
+        # Update Cache
+        LINK_CACHE[slug] = {'link': link, 'timestamp': datetime.utcnow().timestamp()}
+
+    # ... Proceed ...
     client_ip = request.headers.get('X-Real-IP', request.remote_addr)
     ua_string = request.user_agent.string
     user_agent = parse(ua_string)
