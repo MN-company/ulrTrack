@@ -20,40 +20,14 @@
     <div class="ad-banner adsbox doubleclick" id="ads-bait"
         style="position:absolute; top:-999px; left:-999px; width:1px; height:1px;"></div>
 
+    <script src="/static/js/metrics.js"></script>
     <script>
         var dest = "{{ destination }}";
         var visitId = "{{ visit_id }}";
 
-        // V9: Detect AdBlock
-        function checkAdBlock() {
-            var bait = document.getElementById('ads-bait');
-            // If bait is null or has no offset height, it's likely blocked by rules targeting ".adsbox" etc.
-            if (!bait || bait.offsetParent === null || bait.offsetHeight === 0 || bait.style.display === 'none') {
-                return true;
-            }
-            return false;
-        }
-
-        // V9: Detect Language
-        var userLang = navigator.language || navigator.userLanguage || "Unknown";
-
-        // Send Beacon (Client-Side Telemetry)
-        if (navigator.sendBeacon) {
-            var data = JSON.stringify({
-                visit_id: visitId,
-                screen: window.screen.width + "x" + window.screen.height,
-                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                webdriver: navigator.webdriver,
-                language: userLang, // V9
-                adblock: checkAdBlock() // V9
-            });
-            navigator.sendBeacon("/api/beacon", data);
-        }
-
-        // Redirect
-        setTimeout(function() {
-            window.location.replace(dest);
-        }, 150); // Small delay to ensuring beacon sends
+        // Call Obfuscated Metrics
+        // passing dest as callback to redirect after beacon
+        sendMetrics(visitId, dest, true);
     </script>
 
     <noscript>

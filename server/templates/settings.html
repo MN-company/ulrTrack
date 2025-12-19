@@ -10,7 +10,27 @@
     <form method="POST">
         <div class="form-group">
             <label>API Key (Admin Password)</label>
-            <input type="text" name="api_key" value="{{ api_key }}" required>
+            <div style="display: flex; gap: 10px;">
+                <input type="password" name="api_key" id="apiKeyField" value="{{ api_key }}" required
+                    style="flex-grow: 1;">
+                <button type="button" class="btn-outline" onclick="toggleApiKey()" style="width: 50px;"><i
+                        class="fas fa-eye" id="eyeIcon"></i></button>
+            </div>
+            <script>
+                function toggleApiKey() {
+                    var x = document.getElementById("apiKeyField");
+                    var icon = document.getElementById("eyeIcon");
+                    if (x.type === "password") {
+                        x.type = "text";
+                        icon.classList.remove("fa-eye");
+                        icon.classList.add("fa-eye-slash");
+                    } else {
+                        x.type = "password";
+                        icon.classList.remove("fa-eye-slash");
+                        icon.classList.add("fa-eye");
+                    }
+                }
+            </script>
         </div>
 
         <div class="form-group" style="margin-top: 15px;">
@@ -23,6 +43,31 @@
             <label>OSINT Command (Holehe)</label>
             <input type="text" name="holehe_cmd" value="{{ holehe_cmd }}" placeholder="holehe">
             <small style="color:var(--text-sec);">Custom command or path if 'holehe' is not in PATH.</small>
+        </div>
+
+        <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:20px 0;">
+
+        <h4><i class="fas fa-robot"></i> AI Configuration</h4>
+
+        <div class="form-group" style="margin-top: 15px;">
+            <label>Gemini Model</label>
+            <select name="gemini_model">
+                <option value="gemini-1.5-flash" {% if gemini_model=='gemini-1.5-flash' %}selected{% endif %}>Gemini 1.5
+                    Flash (Default)</option>
+                <option value="gemini-1.5-flash-8b" {% if gemini_model=='gemini-1.5-flash-8b' %}selected{% endif %}>
+                    Gemini 1.5 Flash 8B (Fastest)</option>
+                <option value="gemini-1.5-pro" {% if gemini_model=='gemini-1.5-pro' %}selected{% endif %}>Gemini 1.5 Pro
+                    (Best Intelligence)</option>
+                <option value="gemini-2.0-flash-exp" {% if gemini_model=='gemini-2.0-flash-exp' %}selected{% endif %}>
+                    Gemini 2.0 Flash Exp (New)</option>
+            </select>
+        </div>
+
+        <div class="form-group" style="margin-top: 15px;">
+            <label>System Prompt (Personality)</label>
+            <textarea name="ai_prompt" rows="5"
+                placeholder="Define how the AI analyzes the visitor OS/Browser...">{{ ai_prompt }}</textarea>
+            <small style="color:var(--text-sec);">Instructions for the AI Detective.</small>
         </div>
 
         <div style="margin-top: 30px; text-align: right;">

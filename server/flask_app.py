@@ -53,9 +53,11 @@ login_manager.login_view = 'login'
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default_dev_secret')
 API_KEY = os.getenv('API_KEY', 'changeme')
 SERVER_URL = os.getenv('SERVER_URL', 'http://127.0.0.1:8080')
-
-TURNSTILE_SECRET_KEY = os.getenv('TURNSTILE_SECRET_KEY', '1x0000000000000000000000000000000AA')
-TURNSTILE_SITE_KEY = os.getenv('TURNSTILE_SITE_KEY', '1x00000000000000000000AA')
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+TURNSTILE_SITE_KEY = os.getenv('TURNSTILE_SITE_KEY', 'default_site_key')
+TURNSTILE_SECRET_KEY = os.getenv('TURNSTILE_SECRET_KEY', 'default_secret_key')
+GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-1.5-flash')
+AI_PROMPT = os.getenv('AI_PROMPT', 'You are a cybersecurity expert. Analyze the implementation details of the provided User-Agent, Screen Resolution, and Header data to determine the likely OS, Browser, Device, and Threat Level. Be concise.')
 PROXYCHECK_API_KEY = os.getenv('PROXYCHECK_API_KEY', '')
 
 db = SQLAlchemy(app)
@@ -68,6 +70,12 @@ db = SQLAlchemy(app)
 #     cursor.execute("PRAGMA journal_mode=WAL")
 #     cursor.execute("PRAGMA synchronous=NORMAL") # Faster writes
 #     cursor.close()
+
+# --- V21 Security: Header Obfuscation ---
+@app.after_request
+def remove_header(response):
+    del response.headers['Server']
+    return response
 
 # --- Models ---
 class Link(db.Model):
@@ -324,14 +332,14 @@ def redirect_to_url(slug):
         visit.is_suspicious = True # Mark as "failed" in a sense? Or just blocked.
         # Maybe add a 'status' column later? For now, is_suspicious=True usually means blocked/bad.
         db.session.commit()
-        return render_template('error.html', message="Link Expired"), 410
+        return render_template('error.html', message="Link Expired", visit_id=visit.id, hide_nav=True), 410
 
     # Max Clicks (re-query to include current one? No, current is just created)
     # Actually, we just added one. So count >= max + 1?
     # Let's keep heuristic: if PREVIOUS count was max.
     clicks = Visit.query.filter_by(link_id=link.id).count()
     if link.max_clicks and clicks > link.max_clicks:
-        return render_template('error.html', message="Link Limit Reached"), 410
+        return render_template('error.html', message="Link Limit Reached", visit_id=visit.id, hide_nav=True), 410
 
     # Regional Block
     if link.allowed_countries:
@@ -343,7 +351,7 @@ def redirect_to_url(slug):
             if link.safe_url:
                 final_dest = link.safe_url
             else:
-                 return render_template('error.html', message="Access Denied (Region)"), 403
+                 return render_template('error.html', message="Access Denied (Region)", visit_id=visit.id, hide_nav=True), 403
 
     # VPN/Bot Block
     is_vpn = False
@@ -365,7 +373,7 @@ def redirect_to_url(slug):
         if link.safe_url:
              final_dest = link.safe_url
         else:
-             return render_template('error.html', message="Suspicious Traffic Detected"), 403
+             return render_template('error.html', message="Suspicious Traffic Detected", visit_id=visit.id, hide_nav=True), 403
 
     # --- 3. GATES (Modular & Independent) ---
     
@@ -401,39 +409,7 @@ def redirect_to_url(slug):
     # --- 4. SUCCESS ---
     return render_template('loading.html', destination=final_dest, visit_id=visit.id, allow_no_js=link.allow_no_js, hide_nav=True)
 
-@app.route('/verify_password', methods=['POST'])
-def verify_password():
-    slug = request.form.get('slug')
-    pwd = request.form.get('password')
-    visit_id = request.form.get('visit_id')
-    
-    link = Link.query.filter_by(slug=slug).first()
-    if not link or not link.password_hash:
-        return redirect(f"/{slug}")
-        
-    if hashlib.sha256(pwd.encode()).hexdigest() == link.password_hash:
-        resp = make_response(redirect(f"/{slug}"))
-        # Set Pass Cookie
-        h = hashlib.sha256(f"{link.password_hash}{app.config['SECRET_KEY']}".encode()).hexdigest()
-        resp.set_cookie(f"auth_pass_{slug}", h, max_age=86400)
-        return resp
-    else:
-        return render_template('password.html', slug=slug, error="Incorrect Password", visit_id=visit_id, hide_nav=True)
 
-@app.route('/verify_captcha', methods=['POST'])
-def verify_captcha():
-    slug = request.form.get('slug')
-    visit_id = request.form.get('visit_id')
-    turnstile_token = request.form.get('cf-turnstile-response')
-    
-    ip = request.headers.get('X-Real-IP', request.remote_addr)
-    if verify_turnstile(turnstile_token, ip):
-        resp = make_response(redirect(f"/{slug}"))
-        h = hashlib.sha256(f"captcha_ok_{slug}{app.config['SECRET_KEY']}".encode()).hexdigest()
-        resp.set_cookie(f"auth_captcha_{slug}", h, max_age=86400*30)
-        return resp
-    else:
-        return render_template('captcha.html', slug=slug, error="Verification Failed", site_key=TURNSTILE_SITE_KEY, visit_id=visit_id, hide_nav=True)
 
 @app.route('/verify_email', methods=['POST'])
 def verify_email_route():
@@ -470,11 +446,11 @@ def verify_email_route():
     resp = make_response(redirect(f"/{slug}"))
     
     # A. Set Email Cookie
-    resp.set_cookie(f"auth_email_{slug}", "verified", max_age=86400*30) 
+    resp.set_cookie(f"auth_email_{slug}", "verified", max_age=86400*30, httponly=True, secure=True, samesite='Lax') 
     
     # B. Set Captcha Cookie (Prevent Double Captcha)
     captcha_hash = hashlib.sha256(f"captcha_ok_{slug}{app.config['SECRET_KEY']}".encode()).hexdigest()
-    resp.set_cookie(f"auth_captcha_{slug}", captcha_hash, max_age=86400*30)
+    resp.set_cookie(f"auth_captcha_{slug}", captcha_hash, max_age=86400*30, httponly=True, secure=True, samesite='Lax')
     
     return resp
 
@@ -587,7 +563,7 @@ def verify_password_route():
         # Set Cookie
         auth_val = hashlib.sha256(f"{link.password_hash}{app.config['SECRET_KEY']}".encode()).hexdigest()
         resp = make_response(redirect(f"/{slug}"))
-        resp.set_cookie(f"auth_{slug}", auth_val, max_age=3600) # 1 hour session
+        resp.set_cookie(f"auth_{slug}", auth_val, max_age=3600, httponly=True, secure=True, samesite='Lax') # 1 hour session
         return resp
     else:
         return render_template('password.html', slug=slug, site_key=TURNSTILE_SITE_KEY, error="Invalid Password"), 401
@@ -603,7 +579,7 @@ def verify_captcha_route():
     if verify_turnstile(turnstile_token, client_ip):
         auth_val = hashlib.sha256(f"captcha_ok_{slug}{app.config['SECRET_KEY']}".encode()).hexdigest()
         resp = make_response(redirect(f"/{slug}"))
-        resp.set_cookie(f"auth_{slug}", auth_val, max_age=3600)
+        resp.set_cookie(f"auth_{slug}", auth_val, max_age=3600, httponly=True, secure=True, samesite='Lax')
         return resp
     else:
         return render_template('captcha.html', slug=slug, site_key=TURNSTILE_SITE_KEY, error="Verification Failed"), 400
@@ -1023,6 +999,11 @@ def dashboard_settings():
         # Update .env file
         new_key = request.form.get('api_key')
         new_url = request.form.get('server_url')
+        new_holehe = request.form.get('holehe_cmd')
+        
+        # AI Config
+        new_model = request.form.get('gemini_model')
+        new_prompt = request.form.get('ai_prompt')
         
         # Read current lines
         env_path = os.path.join(basedir, '../.env')
@@ -1030,25 +1011,57 @@ def dashboard_settings():
             with open(env_path, 'r') as f:
                 lines = f.readlines()
             
-            with open(env_path, 'w') as f:
-                for line in lines:
-                    if line.startswith('API_KEY='):
-                        f.write(f'API_KEY={new_key}\n')
-                    elif line.startswith('SERVER_URL='):
-                        f.write(f'SERVER_URL={new_url}\n')
-                    else:
-                        f.write(line)
+            # Prepare dict for easy update
+            # Ideally use python-dotenv set_key but manual is fine for stability here
             
-            # Update globals in memory (requires restart usually, but for display good)
-            global API_KEY, SERVER_URL
+            # Dictionary of keys to update
+            updates = {
+                'API_KEY': new_key,
+                'SERVER_URL': new_url,
+                'HOLEHE_CMD': new_holehe,
+                'GEMINI_MODEL': new_model,
+                'AI_PROMPT': new_prompt
+            }
+            
+            new_lines = []
+            seen_keys = set()
+            
+            for line in lines:
+                key_match = False
+                for k, v in updates.items():
+                    if line.startswith(f'{k}='):
+                        if v: new_lines.append(f'{k}={v}\n')
+                        seen_keys.add(k)
+                        key_match = True
+                        break
+                if not key_match:
+                    new_lines.append(line)
+            
+            # Append missing new keys
+            for k, v in updates.items():
+                if k not in seen_keys and v:
+                    new_lines.append(f'{k}={v}\n')
+            
+            with open(env_path, 'w') as f:
+                f.writelines(new_lines)
+            
+            # Update globals
+            global API_KEY, SERVER_URL, GEMINI_MODEL, AI_PROMPT
             API_KEY = new_key
             SERVER_URL = new_url
+            GEMINI_MODEL = new_model
+            AI_PROMPT = new_prompt
             
             flash('Settings saved. Restart server to apply fully.', 'success')
         except Exception as e:
             flash(f'Error saving settings: {e}', 'error')
             
-    return render_template('settings.html', api_key=API_KEY, server_url=SERVER_URL)
+    return render_template('settings.html', 
+                          api_key=API_KEY, 
+                          server_url=SERVER_URL, 
+                          holehe_cmd=os.getenv('HOLEHE_CMD', ''),
+                          gemini_model=os.getenv('GEMINI_MODEL', 'gemini-1.5-flash'),
+                          ai_prompt=os.getenv('AI_PROMPT', ''))
 
 @app.route('/dashboard/edit/<int:id>', methods=['GET', 'POST'])
 @login_required
@@ -1238,10 +1251,23 @@ def analyze_email():
         
         output = result.stdout
         found_sites = []
+        rate_limited = []
+        
         for line in output.split('\n'):
+            line = line.strip()
             if '[+]' in line:
-                site = line.split(']')[1].strip()
-                found_sites.append(site)
+                # Example: [x] Instagram
+                # Some versions use [+] Name: Used
+                parts = line.split(']')
+                if len(parts) > 1:
+                     site = parts[1].strip()
+                     found_sites.append(site)
+            elif '[!]' in line or 'rate limit' in line.lower():
+                # Rate limited
+                parts = line.split(']')
+                if len(parts) > 1:
+                     site = parts[1].strip()
+                     rate_limited.append(site)
         
         # Update Lead
         lead = Lead.query.filter_by(email=email).first()
@@ -1252,8 +1278,8 @@ def analyze_email():
         lead.holehe_data = json.dumps(found_sites)
         db.session.commit()
         
-        # V19: Render HTML Result
-        return render_template('analysis_result.html', email=email, sites=found_sites, raw_log=output)
+        # V19: Render HTML Result (Enhanced)
+        return render_template('analysis_result.html', email=email, sites=found_sites, rate_limited=rate_limited, raw_log=output)
         
     except Exception as e:
         return f"<h1>Scan Error</h1><pre>{e}</pre>"

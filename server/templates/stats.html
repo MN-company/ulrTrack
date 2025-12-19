@@ -122,6 +122,11 @@
                     </div>
                     {% endif %}
 
+                    <!-- Basic OS/Device -->
+                    <div style="font-size: 0.8rem; color: var(--accent); margin-bottom: 4px;">
+                        {{ v.os_family }} <span style="color:var(--text-sec)">/</span> {{ v.device_type }}
+                    </div>
+
                     <!-- WebGL -->
                     {% if v.webgl_renderer %}
                     <div style="font-size: 0.75rem; color: #aaa;">
