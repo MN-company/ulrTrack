@@ -931,9 +931,21 @@ def dashboard_create():
         destination=dest, 
         slug=slug, 
         block_bots=block_bots, 
-        block_vpn=block_vpn
-        # Defaults for others
+        block_vpn=block_vpn,
+        enable_captcha=request.form.get('enable_captcha') == 'true',
+        require_email=request.form.get('require_email') == 'true'
     )
+    
+    # Auto-mask with is.gd if requested? Or simply always do it if it's "Mask URL" button.
+    # The form usually has 'create' button.
+    # We'll stick to basic creation, then user can edit to mask or we can do it if enabled.
+    # User asked for "is.gd in quick link creator".
+    
+    if request.form.get('mask_url'):
+         full_url = f"{SERVER_URL}/{slug}"
+         masked = shorten_with_isgd(full_url)
+         if masked: new_link.public_masked_url = masked
+
     db.session.add(new_link)
     db.session.commit()
     flash(f'Link created: /{slug}', 'success')
@@ -1207,6 +1219,119 @@ def dashboard_stats(slug):
                           top_countries=countries, top_referrers=referrers,
                           visits=visits)
 
+@app.route('/dashboard/lead/merge', methods=['POST'])
+@login_required
+def dashboard_merge_leads():
+    source_id = request.form.get('source_id')
+    target_email = request.form.get('target_email')
+    
+    source = Lead.query.get(source_id)
+    target = Lead.query.filter_by(email=target_email).first()
+    
+    if not source or not target:
+        flash('Lead not found.', 'error')
+        return redirect(f'/dashboard/lead/{source_id}')
+        
+    if source.id == target.id:
+        flash('Cannot merge into self.', 'error')
+        return redirect(f'/dashboard/lead/{source_id}')
+
+    # MERGE LOGIC
+    # 1. Reassign Visits
+    visits = Visit.query.filter_by(email=source.email).all()
+    for v in visits:
+        v.email = target.email
+    
+    # 2. Merge Notes
+    if source.notes:
+        target.notes = (target.notes or "") + f"\n[Merged {source.email}]: {source.notes}"
+        
+    # 3. Merge Holehe Data (Simple Append)
+    if source.holehe_data:
+        target.holehe_data = (target.holehe_data or "[]")[:-1] + "," + (source.holehe_data or "[]")[1:]
+        # A bit messy, ideally parse list and set unique.
+        
+    db.session.commit()
+    
+    # 4. Delete Source
+    db.session.delete(source)
+    db.session.commit()
+    
+    flash(f'Merged {source.email} into {target.email}', 'success')
+    return redirect(f'/dashboard/lead/{target.id}')
+
+
+@app.route('/dashboard/ai_test')
+@login_required
+def dashboard_ai_test():
+    """Diagnose AI Connectivity."""
+    log = []
+    log.append(f"API KEY Present: {'Yes' if GEMINI_API_KEY else 'NO'}")
+    
+    try:
+        from google import genai
+        log.append("Library `google-genai` imported successfully.")
+        
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        response = client.models.generate_content(
+            model='gemini-1.5-flash',
+            contents="Say 'OK'"
+        )
+        log.append(f"Test Request Response: {response.text}")
+        status = "SUCCESS"
+    except ImportError:
+        log.append("ERROR: `google-genai` library NOT found.")
+        status = "FAILED"
+    except Exception as e:
+        log.append(f"ERROR: Exception during request: {e}")
+        status = "FAILED"
+        
+    return "<br>".join(log)
+
+@app.route('/dashboard/analyze_email', methods=['POST'])
+@login_required
+def analyze_email():
+    email = request.form.get('email')
+    if not email: return jsonify({'error': 'No email provided'}), 400
+    
+    # REAL HOLEHE EXECUTION
+    import subprocess
+    import json
+    
+    cmd = os.getenv('HOLEHE_CMD', 'holehe')
+    
+    try:
+        # Run holehe --only-used --no-color <email>
+        if cmd == 'holehe':
+            venv_holehe = os.path.join(os.path.dirname(__file__), '..', 'venv', 'bin', 'holehe')
+            if os.path.exists(venv_holehe):
+                cmd = venv_holehe
+                
+        # print(f"Running OSINT: {cmd} {email}")
+        result = subprocess.run([cmd, email, '--only-used', '--no-color'], capture_output=True, text=True, timeout=45)
+        
+        output = result.stdout
+        found_sites = []
+        for line in output.split('\n'):
+            if '[+]' in line:
+                site = line.split(']')[1].strip()
+                found_sites.append(site)
+        
+        # Update Lead
+        lead = Lead.query.filter_by(email=email).first()
+        if not lead:
+            lead = Lead(email=email)
+            db.session.add(lead)
+            
+        lead.holehe_data = json.dumps(found_sites)
+        db.session.commit()
+        
+        # V19: Render HTML Result
+        return render_template('analysis_result.html', email=email, sites=found_sites, raw_log=output)
+        
+    except Exception as e:
+        return f"<h1>Scan Error</h1><pre>{e}</pre>"
+        
 @app.route('/dashboard/export/<slug>')
 @login_required
 def dashboard_export(slug):
@@ -1215,13 +1340,13 @@ def dashboard_export(slug):
     
     si = io.StringIO()
     cw = csv.writer(si)
-    cw.writerow(['Timestamp', 'IP', 'Country', 'City', 'OS', 'Browser', 'Device', 'Referrer', 'ISP', 'VPN', 'Proxy', 'Tor', 'Screen', 'Timezone', 'Lang', 'AdBlock'])
+    cw.writerow(['Timestamp', 'IP', 'Country', 'City', 'OS', 'Device', 'Referrer', 'ISP', 'Suspicious', 'Screen', 'Timezone', 'Lang', 'AdBlock'])
     
     for v in visits:
         cw.writerow([
             v.timestamp, v.ip_address, v.country, v.city, 
-            v.os, v.browser, 'Mobile' if v.is_mobile else 'Desktop', 
-            v.referrer, v.isp, v.is_vpn, v.is_proxy, v.is_tor,
+            v.os_family, v.device_type, 
+            v.referrer, v.isp, v.is_suspicious,
             v.screen_res, v.timezone, v.browser_language, v.adblock
         ])
         
