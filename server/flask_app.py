@@ -1340,14 +1340,15 @@ def dashboard_export(slug):
     
     si = io.StringIO()
     cw = csv.writer(si)
-    cw.writerow(['Timestamp', 'IP', 'Country', 'City', 'OS', 'Device', 'Referrer', 'ISP', 'Suspicious', 'Screen', 'Timezone', 'Lang', 'AdBlock'])
+    cw.writerow(['Timestamp', 'IP', 'Country', 'City', 'OS', 'User-Agent', 'Device', 'Referrer', 'ISP', 'Suspicious', 'Screen', 'Timezone', 'Lang', 'AdBlock', 'Email', 'AI Summary'])
     
     for v in visits:
         cw.writerow([
             v.timestamp, v.ip_address, v.country, v.city, 
-            v.os_family, v.device_type, 
+            v.os_family, v.user_agent, v.device_type, 
             v.referrer, v.isp, v.is_suspicious,
-            v.screen_res, v.timezone, v.browser_language, v.adblock
+            v.screen_res, v.timezone, v.browser_language, v.adblock,
+            v.email, v.ai_summary
         ])
         
     output = make_response(si.getvalue())
