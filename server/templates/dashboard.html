@@ -61,7 +61,32 @@
     </div>
 </div>
 
-<!-- ... (Quick Create skipped) ... -->
+<!-- Quick Create Bar -->
+<div class="card">
+    <form method="POST" action="/dashboard/create" class="quick-create">
+        <input type="url" name="destination" placeholder="Paste Target URL here..." required>
+
+        <input type="text" name="slug" placeholder="Slug (Opt)">
+
+        <!-- Minimized Filters/Options -->
+        <select name="block_bots">
+            <option value="true">Block Bot: ON</option>
+            <option value="false">Block Bot: OFF</option>
+        </select>
+
+        <select name="block_vpn">
+            <option value="false">Block VPN: OFF</option>
+            <option value="true">Block VPN: ON</option>
+        </select>
+
+        <button type="submit" class="btn"><i class="fas fa-bolt"></i> CREATE</button>
+    </form>
+    <div
+        style="margin-top: 10px; font-size: 0.8rem; color: var(--text-sec); display: flex; justify-content: space-between;">
+        <span><i class="fas fa-info-circle"></i> Quick Mode uses default settings.</span>
+        <a href="/dashboard/create_full" class="text-accent" style="font-weight: 600;">USE ADVANCED CREATOR &rarr;</a>
+    </div>
+</div>
 
 <!-- Links Table -->
 <div class="card" style="padding: 0;">
