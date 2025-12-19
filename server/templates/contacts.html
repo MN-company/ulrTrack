@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2><i class="fas fa-address-book"></i> Contacts / Leads</h2>
+    <a href="/dashboard" class="btn-outline">Back to Dashboard</a>
+</div>
+
+<div class="card">
+    <p style="color:var(--text-sec); margin-bottom:20px;">
+        Unique profiles collected via Email Gate.
+    </p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Identity (Email)</th>
+                <th>Last Seen</th>
+                <th>Visits</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for email, last_seen, count in leads %}
+            <tr>
+                <td>
+                    <div style="font-weight: 600; font-size: 1.1rem; color: white;">
+                        {{ email }}
+                    </div>
+                </td>
+                <td class="mono" style="color:var(--text-sec);">
+                    {{ last_seen.strftime('%Y-%m-%d %H:%M') }}
+                </td>
+                <td class="mono">
+                    {{ count }}
+                </td>
+                <td>
+                    <form action="/dashboard/analyze_email" method="POST" target="_blank" style="margin:0;">
+                        <input type="hidden" name="email" value="{{ email }}">
+                        <button type="submit" class="btn-sm btn-outline">
+                            <i class="fas fa-search"></i> HOLEHE OSINT
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="4" style="text-align:center; padding:30px; color:var(--text-sec);">
+                    No leads collected yet. Enable "Require Email" on your links.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

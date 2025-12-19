@@ -19,6 +19,12 @@
             <small style="color:var(--text-sec);">Used for generating short links (e.g. http://mysite.com)</small>
         </div>
 
+        <div class="form-group" style="margin-top: 15px;">
+            <label>OSINT Command (Holehe)</label>
+            <input type="text" name="holehe_cmd" value="{{ holehe_cmd }}" placeholder="holehe">
+            <small style="color:var(--text-sec);">Custom command or path if 'holehe' is not in PATH.</small>
+        </div>
+
         <div style="margin-top: 30px; text-align: right;">
             <a href="/dashboard" class="btn-outline">Cancel</a>
             <button type="submit" class="btn">SAVE CONFIG</button>

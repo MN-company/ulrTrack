@@ -358,34 +358,73 @@ def redirect_to_url(slug):
         else:
              return render_template('error.html', message="Suspicious Traffic Detected"), 403
 
-    # --- 3. GATES (Waterfall: Password > Email > Captcha) ---
+    # --- 3. GATES (Modular & Independent) ---
     
-    # 3.1 Password Gate (Highest Priority)
+    # 3.1 Password Gate
     if link.password_hash:
-        auth_cookie = request.cookies.get(f"auth_{slug}")
-        expected_hash = hashlib.sha256(f"{link.password_hash}{app.config['SECRET_KEY']}".encode()).hexdigest()
-        if auth_cookie != expected_hash:
-            return render_template('password.html', slug=slug, visit_id=visit.id, site_key=TURNSTILE_SITE_KEY)
+        auth_cookie = request.cookies.get(f"auth_pass_{slug}")
+        # Validate hash (Salted with Secret)
+        expected_pass_hash = hashlib.sha256(f"{link.password_hash}{app.config['SECRET_KEY']}".encode()).hexdigest()
+        if auth_cookie != expected_pass_hash:
+            return render_template('password.html', slug=slug, visit_id=visit.id, site_key=TURNSTILE_SITE_KEY, hide_nav=True)
 
-    # 3.2 Email Gate (Includes Turnstile)
+    # 3.2 Email Gate
     if link.require_email:
-        email_cookie = request.cookies.get(f"email_{slug}")
+        email_cookie = request.cookies.get(f"auth_email_{slug}")
         if not email_cookie:
-            # If Require Email is ON, it acts as the Captcha too.
-            return render_template('email_gate.html', slug=slug, visit_id=visit.id, site_key=TURNSTILE_SITE_KEY)
+            # Email Gate uses Turnstile, so it implicitly covers "Human Verification" too.
+            return render_template('email_gate.html', slug=slug, visit_id=visit.id, site_key=TURNSTILE_SITE_KEY, hide_nav=True)
 
-    # 3.3 Captcha Gate (Only if Email Gate didn't already handle it)
-    # If require_email was true, we passed 3.2, meaning we verified email+captcha.
-    # So we only show standalone captcha screen if Email Gate is OFF.
-    elif link.enable_captcha and not link.require_email:
-        auth_cookie = request.cookies.get(f"auth_{slug}")
-        expected_hash = hashlib.sha256(f"captcha_ok_{slug}{app.config['SECRET_KEY']}".encode()).hexdigest()
-        if auth_cookie != expected_hash:
-            return render_template('captcha.html', slug=slug, visit_id=visit.id, site_key=TURNSTILE_SITE_KEY)
+    # 3.3 Captcha Gate
+    # Only runs if Captcha is enabled AND NOT already satisfied by Email/Password flow (if desired).
+    # Logic: If Email Gate was ON, and we passed 3.2, user is verified.
+    # However, to be extra modular, we check a specific 'auth_captcha' cookie.
+    # To fix "Double Captcha": verify_email route MUST set this cookie too.
+    if link.enable_captcha:
+        captcha_cookie = request.cookies.get(f"auth_captcha_{slug}")
+        expected_captcha_hash = hashlib.sha256(f"captcha_ok_{slug}{app.config['SECRET_KEY']}".encode()).hexdigest()
+        
+        # Optimization: If email verified (which requires Turnstile), we consider Captcha satisfied.
+        # This is fail-safe: if verify_email set the cookie, this check attempts to read it.
+        if captcha_cookie != expected_captcha_hash:
+             return render_template('captcha.html', slug=slug, visit_id=visit.id, site_key=TURNSTILE_SITE_KEY, hide_nav=True)
 
     # --- 4. SUCCESS ---
-    # Render Stealth Redirect
-    return render_template('loading.html', destination=final_dest, visit_id=visit.id, allow_no_js=link.allow_no_js)
+    return render_template('loading.html', destination=final_dest, visit_id=visit.id, allow_no_js=link.allow_no_js, hide_nav=True)
+
+@app.route('/verify_password', methods=['POST'])
+def verify_password():
+    slug = request.form.get('slug')
+    pwd = request.form.get('password')
+    visit_id = request.form.get('visit_id')
+    
+    link = Link.query.filter_by(slug=slug).first()
+    if not link or not link.password_hash:
+        return redirect(f"/{slug}")
+        
+    if hashlib.sha256(pwd.encode()).hexdigest() == link.password_hash:
+        resp = make_response(redirect(f"/{slug}"))
+        # Set Pass Cookie
+        h = hashlib.sha256(f"{link.password_hash}{app.config['SECRET_KEY']}".encode()).hexdigest()
+        resp.set_cookie(f"auth_pass_{slug}", h, max_age=86400)
+        return resp
+    else:
+        return render_template('password.html', slug=slug, error="Incorrect Password", visit_id=visit_id, hide_nav=True)
+
+@app.route('/verify_captcha', methods=['POST'])
+def verify_captcha():
+    slug = request.form.get('slug')
+    visit_id = request.form.get('visit_id')
+    turnstile_token = request.form.get('cf-turnstile-response')
+    
+    ip = request.headers.get('X-Real-IP', request.remote_addr)
+    if verify_turnstile(turnstile_token, ip):
+        resp = make_response(redirect(f"/{slug}"))
+        h = hashlib.sha256(f"captcha_ok_{slug}{app.config['SECRET_KEY']}".encode()).hexdigest()
+        resp.set_cookie(f"auth_captcha_{slug}", h, max_age=86400*30)
+        return resp
+    else:
+        return render_template('captcha.html', slug=slug, error="Verification Failed", site_key=TURNSTILE_SITE_KEY, visit_id=visit_id, hide_nav=True)
 
 @app.route('/verify_email', methods=['POST'])
 def verify_email_route():
@@ -397,31 +436,53 @@ def verify_email_route():
     # 1. Turnstile Check
     ip = request.headers.get('X-Real-IP', request.remote_addr)
     if not verify_turnstile(turnstile_token, ip):
-         return render_template('email_gate.html', slug=slug, error="Captcha Failed", site_key=TURNSTILE_SITE_KEY, visit_id=visit_id), 400
+         return render_template('email_gate.html', slug=slug, error="Captcha Failed", site_key=TURNSTILE_SITE_KEY, visit_id=visit_id, hide_nav=True), 400
 
-    # 2. Email Validation (Regex)
+    # 2. Email Validation
     import re
     if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-         return render_template('email_gate.html', slug=slug, error="Invalid Email Format", site_key=TURNSTILE_SITE_KEY, visit_id=visit_id), 400
+         return render_template('email_gate.html', slug=slug, error="Invalid Email", site_key=TURNSTILE_SITE_KEY, visit_id=visit_id, hide_nav=True), 400
          
-    # 3. Save Email to Visit
+    # 3. Save Email
     if visit_id:
         visit = Visit.query.get(visit_id)
         if visit:
             visit.email = email
             db.session.commit()
             
-    # 4. Set Cookie & Redirect
+    # 4. Set Cookies & Redirect
     resp = make_response(redirect(f"/{slug}"))
-    # Set Email Cookie
-    resp.set_cookie(f"email_{slug}", "verified", max_age=86400*30) 
-    # FIX: ALSO Set Captcha Cookie to prevent Double Captcha if that toggle was also on
+    
+    # A. Set Email Cookie
+    resp.set_cookie(f"auth_email_{slug}", "verified", max_age=86400*30) 
+    
+    # B. Set Captcha Cookie (Prevent Double Captcha)
+    # Since user passed Turnstile here, they are human.
     captcha_hash = hashlib.sha256(f"captcha_ok_{slug}{app.config['SECRET_KEY']}".encode()).hexdigest()
-    resp.set_cookie(f"auth_{slug}", captcha_hash, max_age=86400*30)
+    resp.set_cookie(f"auth_captcha_{slug}", captcha_hash, max_age=86400*30)
     
     return resp
 
-# V16 Holehe Analysis
+# --- V17 NEW: CONTACTS MANAGER ---
+@app.route('/dashboard/contacts')
+@login_required
+def dashboard_contacts():
+    # Aggregate visits by Email
+    # Logic: Get all visits with email, grouping is tricky in pure SQLA without models structure change,
+    # so we do python filtering for flexibility (dataset is likely small for now).
+    # Ideally: SELECT distinct email, max(timestamp), count(*) FROM visit WHERE email IS NOT NULL GROUP BY email
+    
+    from sqlalchemy import func
+    
+    # Query: List of (Email, LastSeen, Count)
+    leads = db.session.query(
+        Visit.email,
+        func.max(Visit.timestamp).label('last_seen'),
+        func.count(Visit.id).label('visit_count')
+    ).filter(Visit.email != None).group_by(Visit.email).order_by(func.max(Visit.timestamp).desc()).all()
+    
+    return render_template('contacts.html', leads=leads)
+
 @app.route('/dashboard/analyze_email', methods=['POST'])
 @login_required
 def analyze_email():

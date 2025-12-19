@@ -265,11 +265,13 @@
 
 <body>
 
-    {% if current_user.is_authenticated %}
+    {% if current_user.is_authenticated and not hide_nav %}
     <nav>
-        <div class="logo">STEALTH<span>V13</span></div>
+        <div class="logo">STEALTH<span>V17</span></div>
         <div class="nav-links">
             <a href="/dashboard" class="{% if request.path == '/dashboard' %}active{% endif %}">Dashboard</a>
+            <a href="/dashboard/contacts"
+                class="{% if request.path == '/dashboard/contacts' %}active{% endif %}">Contacts</a>
             <a href="/dashboard/settings">Settings</a>
         </div>
         <div>
