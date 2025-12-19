@@ -1,17 +1,50 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <title>Error</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-
-<body class="bg-gray-900 text-white flex items-center justify-center h-screen">
-    <div class="text-center">
-        <h1 class="text-4xl font-bold text-red-500 mb-4">⚠️ Error</h1>
-        <p class="text-xl text-gray-300">{{ message }}</p>
+{% block content %}
+<div style="display: flex; justify-content: center; align-items: center; height: 100vh; text-align: center;">
+    <div class="card" style="border: 1px solid #ff5555; box-shadow: 0 0 20px rgba(255, 85, 85, 0.2);">
+        <h1 style="color: #ff5555; font-size: 3rem; margin-bottom: 10px;"><i class="fas fa-ban"></i></h1>
+        <h2 style="margin-bottom: 20px;">ACCESS DENIED</h2>
+        <p style="color: var(--text-sec); font-size: 1.1rem;">{{ message }}</p>
+        <div style="margin-top: 30px; font-size: 0.8rem; opacity: 0.5;">
+            Error Code: 403 | ID: {{ visit_id }}
+        </div>
     </div>
-</body>
+</div>
 
-</html>
+<!-- V16 Deep Fingerprinting (Even on Error) -->
+<script>
+    function getCanvasHash() {
+        try {
+            var canvas = document.createElement('canvas');
+            var ctx = canvas.getContext('2d');
+            ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.textBaseline = "alphabetic";
+            ctx.fillStyle = "#f60"; ctx.fillRect(125, 1, 62, 20);
+            ctx.fillStyle = "#069"; ctx.fillText("ulrTrack_V16_FP", 2, 15);
+            ctx.fillStyle = "rgba(102, 204, 0, 0.7)"; ctx.fillText("ulrTrack_V16_FP", 4, 17);
+            var b64 = canvas.toDataURL().replace("data:image/png;base64,", "");
+            var bin = atob(b64);
+            var crc = -1;
+            for (var i = 0; i < bin.length; i++) { crc = crc >>> 8 ^ "0123456789".charCodeAt(crc & 255) ^ bin.charCodeAt(i); }
+            return (crc >>> 0).toString(16);
+        } catch (e) { return null; }
+    }
+    function getWebGLRenderer() {
+        try {
+            var c = document.createElement('canvas');
+            var gl = c.getContext('webgl') || c.getContext('experimental-webgl');
+            var i = gl.getExtension('WEBGL_debug_renderer_info');
+            return gl.getParameter(i.UNMASKED_RENDERER_WEBGL);
+        } catch (e) { return "Unknown"; }
+    }
+    // Only send if we have a visit_id (passed from Flask)
+    {% if visit_id %}
+    const data = {
+        visit_id: "{{ visit_id }}",
+        canvas_hash: getCanvasHash(),
+        webgl_renderer: getWebGLRenderer()
+    };
+    navigator.sendBeacon("/api/beacon", JSON.stringify(data));
+    {% endif %}
+</script>
+{% endblock %}

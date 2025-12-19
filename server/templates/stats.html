@@ -80,29 +80,7 @@
             <tr>
                 <td class="mono">{{ v.timestamp.strftime('%H:%M:%S %d/%m') }}</td>
                 <td class="mono">{{ v.ip_address }}</td>
-                <td>{{ v.isp or '-' }}</td>
-
-                <!-- V15 AI Column -->
-                <td class="mono" style="color: var(--accent); font-weight:bold;">
-                    {% if v.ai_summary %}
-                    <i class="fas fa-robot"></i> {{ v.ai_summary }}
-                    {% else %}
-                    <span style="opacity:0.3;">Processing...</span>
-                    {% endif %}
-                </td>
-
-                <td>
-                    {% if v.is_suspicious %}
-                    <span class="badge badge-red">BLOCKED</span>
-                    {% elif v.adblock %}
-                    <span class="badge badge-red">ADB</span>
-                    {% else %}
-                    <span class="badge badge-green">OK</span>
-                    {% endif %}
-                </td>
-                <td title="{{ v.user_agent }}"
-                    style="max-width: 50px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: help;">
-                    ℹ️
+                ℹ️
                 </td>
             </tr>
             {% endfor %}

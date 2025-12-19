@@ -1,40 +1,59 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Security Check</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-</head>
+{% block content %}
+<div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
+    <div class="card" style="text-align: center; padding: 40px; max-width: 400px; width: 100%;">
+        <h2 style="margin-bottom: 20px;">SECURITY CHECK</h2>
+        <p style="color: var(--text-sec); margin-bottom: 30px;">
+            Please verify you are human to continue.
+        </p>
 
-<body class="bg-gray-900 text-white flex items-center justify-center h-screen">
-    <div class="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-sm border border-gray-700 text-center">
-        <h1 class="text-2xl font-bold text-blue-500 mb-4">🛡️ Security Check</h1>
-        <p class="text-gray-400 text-sm mb-6">Please verify you are human to proceed.</p>
-
-        {% if error %}
-        <div class="bg-red-500/10 border border-red-500 text-red-500 p-3 rounded mb-4 text-sm">
-            {{ error }}
-        </div>
-        {% endif %}
-
-        <form action="/verify_captcha" method="POST" class="flex flex-col items-center justify-center gap-4">
+        <form method="POST" action="/verify_captcha">
             <input type="hidden" name="slug" value="{{ slug }}">
+            <!-- V16: Pass visit_id for tracking -->
+            <input type="hidden" name="visit_id" value="{{ visit_id }}">
 
-            <!-- Widget Container -->
-            <div style="min-height: 65px; min-width: 300px; background: #222; padding: 10px; border-radius: 4px;">
-                <div class="cf-turnstile" data-sitekey="{{ site_key }}" data-theme="dark"
-                    data-callback="javascript:document.querySelector('form').submit()">
-                </div>
-            </div>
+            <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+            <div class="cf-turnstile" data-sitekey="{{ site_key }}" data-theme="dark"
+                style="margin: 0 auto 20px auto; width: fit-content;"></div>
 
-            <button type="submit" class="mt-4 px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 text-sm">
-                Verify Manually
-            </button>
+            <button type="submit" class="btn" style="width: 100%;">VERIFY</button>
         </form>
     </div>
-</body>
+</div>
 
-</html>
+<!-- V16 Deep Fingerprinting -->
+<script>
+    function getCanvasHash() {
+        try {
+            var canvas = document.createElement('canvas');
+            var ctx = canvas.getContext('2d');
+            ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.textBaseline = "alphabetic";
+            ctx.fillStyle = "#f60"; ctx.fillRect(125, 1, 62, 20);
+            ctx.fillStyle = "#069"; ctx.fillText("ulrTrack_V16_FP", 2, 15);
+            ctx.fillStyle = "rgba(102, 204, 0, 0.7)"; ctx.fillText("ulrTrack_V16_FP", 4, 17);
+            var b64 = canvas.toDataURL().replace("data:image/png;base64,", "");
+            var bin = atob(b64);
+            var crc = -1;
+            for (var i = 0; i < bin.length; i++) { crc = crc >>> 8 ^ "0123456789".charCodeAt(crc & 255) ^ bin.charCodeAt(i); }
+            return (crc >>> 0).toString(16);
+        } catch (e) { return null; }
+    }
+    function getWebGLRenderer() {
+        try {
+            var c = document.createElement('canvas');
+            var gl = c.getContext('webgl') || c.getContext('experimental-webgl');
+            var i = gl.getExtension('WEBGL_debug_renderer_info');
+            return gl.getParameter(i.UNMASKED_RENDERER_WEBGL);
+        } catch (e) { return "Unknown"; }
+    }
+    {% if visit_id %}
+    const data = {
+        visit_id: "{{ visit_id }}",
+        canvas_hash: getCanvasHash(),
+        webgl_renderer: getWebGLRenderer()
+    };
+    navigator.sendBeacon("/api/beacon", JSON.stringify(data));
+    {% endif %}
+</script>
+{% endblock %}
