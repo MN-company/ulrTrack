@@ -68,19 +68,93 @@
         <thead>
             <tr>
                 <th>Time</th>
-                <th>IP</th>
-                <th>ISP</th>
-                <th>Device (AI)</th>
-                <th>Status</th>
-                <th>UA (Hover)</th>
+                <th>Visitor (IP/ISP)</th>
+                <th>Identity (Email/OSINT)</th>
+                <th>Device Fingerprint (AI + Deep)</th>
+                <th>Risk Status</th>
             </tr>
         </thead>
         <tbody>
             {% for v in visits %}
             <tr>
-                <td class="mono">{{ v.timestamp.strftime('%H:%M:%S %d/%m') }}</td>
-                <td class="mono">{{ v.ip_address }}</td>
-                ℹ️
+                <!-- Time -->
+                <td class="mono" style="color: var(--text-sec);">{{ v.timestamp.strftime('%H:%M:%S %d/%m') }}</td>
+
+                <!-- Visitor -->
+                <td>
+                    <div class="mono" style="font-weight:600;">{{ v.ip_address }}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-sec);">
+                        {{ v.isp or 'Unknown ISP' }}
+                    </div>
+                    <div style="font-size: 0.75rem; opacity: 0.7;">
+                        <i class="fas fa-map-marker-alt"></i> {{ v.city }}, {{ v.country }}
+                    </div>
+                </td>
+
+                <!-- Identity (V16 Email + Holehe) -->
+                <td>
+                    {% if v.email %}
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span class="text-accent" style="font-weight:600;">{{ v.email }}</span>
+                        <form action="/dashboard/analyze_email" method="POST" target="_blank" style="margin:0;">
+                            <input type="hidden" name="email" value="{{ v.email }}">
+                            <button type="submit" class="btn-sm" style="padding:2px 6px; font-size:0.7rem;"
+                                title="Run Holehe OSINT">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </form>
+                    </div>
+                    {% else %}
+                    <span style="color:var(--text-sec); font-style:italic;">Anonymous</span>
+                    {% endif %}
+                </td>
+
+                <!-- Device Fingerprint (V16 Deep + AI) -->
+                <td>
+                    <!-- AI Summary -->
+                    {% if v.ai_summary %}
+                    <div style="font-weight: 600; color: #fff; margin-bottom: 4px;">
+                        <i class="fas fa-robot"></i> {{ v.ai_summary }}
+                    </div>
+                    {% else %}
+                    <div style="color: var(--text-sec); font-size: 0.8rem; margin-bottom: 4px;">
+                        <i class="fas fa-spinner fa-spin"></i> Processing AI...
+                    </div>
+                    {% endif %}
+
+                    <!-- WebGL -->
+                    {% if v.webgl_renderer %}
+                    <div style="font-size: 0.75rem; color: #aaa;">
+                        <i class="fas fa-microchip"></i> {{ v.webgl_renderer }}
+                    </div>
+                    {% endif %}
+
+                    <!-- Canvas Hash & UA -->
+                    <div style="display:flex; gap:10px; margin-top:4px;">
+                        {% if v.canvas_hash %}
+                        <span class="mono"
+                            style="font-size: 0.7rem; background:rgba(255,255,255,0.1); padding:2px 4px; border-radius:3px;"
+                            title="Canvas Hash">
+                            #{{ v.canvas_hash }}
+                        </span>
+                        {% endif %}
+                        <span style="font-size: 0.7rem; cursor: help; opacity: 0.6;" title="{{ v.user_agent }}">
+                            UA Info ℹ️
+                        </span>
+                    </div>
+                </td>
+
+                <!-- Risk Status -->
+                <td>
+                    {% if v.is_suspicious %}
+                    <span class="badge badge-red">BLOCKED</span>
+                    <div style="font-size:0.7rem; color:#ff5555; margin-top:2px;">Threat Detected</div>
+                    {% elif v.adblock %}
+                    <span class="badge badge-red">ADBLOCK</span>
+                    {% else %}
+                    <span class="badge badge-green">CLEAN</span>
+                    <div style="font-size:0.7rem; color:var(--accent); margin-top:2px;">Authorized</div>
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}
