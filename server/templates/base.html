@@ -4,26 +4,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stealth Shortener V12</title>
-    <!-- Fonts -->
+    <title>ULRTrack | Enterprise Intelligence</title>
+    <!-- Fonts: Inter for UI, JetBrains for Code -->
     <link
-        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
         rel="stylesheet">
     <!-- Icon -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
         :root {
-            --bg-color: #050505;
-            --card-bg: rgba(25, 25, 25, 0.6);
+            --bg-color: #030303;
+            --card-bg: rgba(20, 20, 20, 0.6);
+            --card-border: 1px solid rgba(255, 255, 255, 0.08);
             --accent: #00ff9d;
-            --accent-dim: rgba(0, 255, 157, 0.1);
+            --accent-glow: rgba(0, 255, 157, 0.4);
             --text-main: #ffffff;
-            --text-sec: #888888;
-            --danger: #ff4d4d;
-            --warning: #ffcc00;
-            --border: 1px solid rgba(255, 255, 255, 0.1);
-            --glass: blur(12px) saturate(180%);
+            --text-sec: #9ca3af;
+            --danger: #ef4444;
+            --glass: blur(16px) saturate(180%);
+            --font-ui: 'Outfit', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
         }
 
         * {
@@ -35,19 +36,21 @@
         body {
             background-color: var(--bg-color);
             color: var(--text-main);
-            font-family: 'Outfit', sans-serif;
+            font-family: var(--font-ui);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             overflow-x: hidden;
+            /* SOTA Background: Subtle Grid + Glow */
             background-image:
-                radial-gradient(circle at 10% 20%, rgba(0, 255, 157, 0.05) 0%, transparent 20%),
-                radial-gradient(circle at 90% 80%, rgba(0, 100, 255, 0.05) 0%, transparent 20%);
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                radial-gradient(circle at 50% 0%, rgba(0, 255, 157, 0.15) 0%, transparent 60%);
+            background-size: 40px 40px, 40px 40px, 100% 100%;
         }
 
-        /* Mono font for data */
         .mono {
-            font-family: 'JetBrains Mono', monospace;
+            font-family: var(--font-mono);
         }
 
         a {
@@ -56,87 +59,83 @@
             transition: 0.2s;
         }
 
-        a:hover {
-            color: var(--accent);
-        }
-
-        /* Navbar */
+        /* Navbar SOTA */
         nav {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 20px 40px;
+            padding: 15px 40px;
+            background: rgba(5, 5, 5, 0.7);
             backdrop-filter: var(--glass);
-            border-bottom: var(--border);
+            border-bottom: var(--card-border);
             position: sticky;
             top: 0;
             z-index: 100;
         }
 
         .logo {
-            font-weight: 600;
+            font-weight: 700;
             font-size: 1.2rem;
-            letter-spacing: 1px;
+            letter-spacing: -0.5px;
         }
 
         .logo span {
             color: var(--accent);
+            text-shadow: 0 0 10px var(--accent-glow);
         }
 
         .nav-links {
             display: flex;
-            gap: 20px;
-            font-size: 0.9rem;
+            gap: 30px;
+            font-size: 0.95rem;
+            font-weight: 500;
             color: var(--text-sec);
         }
 
+        .nav-links a:hover,
         .nav-links a.active {
             color: var(--text-main);
-            font-weight: 600;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
         }
 
+        /* Buttons SOTA */
         .btn {
             background: var(--accent);
             color: #000;
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-weight: 600;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 700;
             font-size: 0.9rem;
-            cursor: pointer;
+            letter-spacing: 0.5px;
             border: none;
-            transition: 0.3s;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 0 15px var(--accent-glow);
         }
 
         .btn:hover {
-            box-shadow: 0 0 15px var(--accent);
-            transform: translateY(-1px);
+            transform: translateY(-2px);
+            box-shadow: 0 0 25px var(--accent-glow);
+            filter: brightness(1.1);
         }
 
         .btn-outline {
             background: transparent;
             border: 1px solid var(--accent);
             color: var(--accent);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
         }
 
         .btn-outline:hover {
-            background: var(--accent-dim);
+            background: rgba(0, 255, 157, 0.1);
+            box-shadow: 0 0 10px var(--accent-glow);
         }
 
-        .btn-sm {
-            padding: 4px 10px;
-            font-size: 0.8rem;
-        }
-
-        .btn-danger {
-            background: var(--danger);
-            color: white;
-        }
-
-        .btn-danger:hover {
-            box-shadow: 0 0 15px rgba(255, 77, 77, 0.4);
-        }
-
-        /* Layout */
+        /* Container & Cards */
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -145,79 +144,70 @@
             flex: 1;
         }
 
-        /* Card */
         .card {
             background: var(--card-bg);
-            border-radius: 12px;
-            border: var(--border);
-            padding: 24px;
+            border-radius: 16px;
+            border: var(--card-border);
+            padding: 30px;
             backdrop-filter: var(--glass);
             margin-bottom: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            transition: transform 0.2s, border-color 0.2s;
         }
 
-        /* Forms */
+        .card:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Inputs */
         input,
-        select {
-            background: rgba(0, 0, 0, 0.3);
-            border: var(--border);
+        select,
+        textarea {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             color: white;
-            padding: 10px 14px;
-            border-radius: 6px;
+            padding: 12px 16px;
+            border-radius: 8px;
             width: 100%;
             font-family: inherit;
+            font-size: 0.95rem;
             outline: none;
             transition: 0.2s;
         }
 
-        input:focus {
+        input:focus,
+        select:focus,
+        textarea:focus {
             border-color: var(--accent);
+            box-shadow: 0 0 10px var(--accent-glow);
+            background: rgba(0, 0, 0, 0.6);
         }
 
-        /* Table */
+        /* Tables */
         table {
             width: 100%;
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0 4px;
         }
 
         th {
             text-align: left;
             color: var(--text-sec);
-            font-size: 0.8rem;
-            padding: 12px;
-            border-bottom: var(--border);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 10px 15px;
         }
 
         td {
-            padding: 14px 12px;
-            border-bottom: var(--border);
-            vertical-align: middle;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 15px;
+            first-child: border-radius: 8px 0 0 8px;
+            last-child: border-radius: 0 8px 8px 0;
         }
 
         tr:hover td {
-            background: rgba(255, 255, 255, 0.02);
-        }
-
-        .badge {
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .badge-green {
-            background: rgba(0, 255, 157, 0.2);
-            color: var(--accent);
-        }
-
-        .badge-red {
-            background: rgba(255, 77, 77, 0.2);
-            color: var(--danger);
-        }
-
-        .badge-gray {
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--text-sec);
+            background: rgba(255, 255, 255, 0.06);
         }
 
         /* Utilities */
@@ -225,39 +215,47 @@
             color: var(--accent);
         }
 
-        .flex-row {
-            display: flex;
-            gap: 10px;
-            align-items: center;
+        .badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .mt-4 {
-            margin-top: 1rem;
+        .badge-green {
+            background: rgba(0, 255, 157, 0.15);
+            color: var(--accent);
+            border: 1px solid rgba(0, 255, 157, 0.3);
         }
 
-        .hidden {
-            display: none;
+        .badge-red {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.3);
         }
 
-        /* Flash Messages */
+        /* Flash */
         .flash {
-            padding: 10px;
-            margin-bottom: 20px;
-            border-radius: 6px;
-            font-size: 0.9rem;
+            padding: 15px;
+            margin-bottom: 25px;
+            border-radius: 8px;
+            font-weight: 500;
             text-align: center;
+            border: 1px solid transparent;
         }
 
         .flash-error {
-            background: rgba(255, 77, 77, 0.2);
+            background: rgba(239, 68, 68, 0.1);
             color: var(--danger);
-            border: 1px solid var(--danger);
+            border-color: rgba(239, 68, 68, 0.3);
         }
 
         .flash-success {
-            background: rgba(0, 255, 157, 0.2);
+            background: rgba(0, 255, 157, 0.1);
             color: var(--accent);
-            border: 1px solid var(--accent);
+            border-color: rgba(0, 255, 157, 0.3);
         }
     </style>
     {% block head %}{% endblock %}

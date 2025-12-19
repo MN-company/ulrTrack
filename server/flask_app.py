@@ -124,6 +124,8 @@ class Lead(db.Model):
     name = db.Column(db.String(100))
     notes = db.Column(db.Text)
     holehe_data = db.Column(db.Text) # JSON list of sites
+    scan_status = db.Column(db.String(20), default='idle') # idle, pending, completed, failed
+    last_scan = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Visit(db.Model):
@@ -179,6 +181,54 @@ def worker():
                     # If AI needed (Screen Res is missing initially, so maybe we wait for beacon?)
                     # Actually, we log the initial visit, then update it with Beacon.
                     print(f"ASYNC LOG: Visit Saved ID={visit.id}")
+                
+                elif task['type'] == 'osint':
+                    # SOTA Async OSINT
+                    email = task['email']
+                    lead_id = task.get('lead_id')
+                    print(f"ASYNC OSINT: Starting scan for {email}")
+                    
+                    try:
+                        # 1. Prepare Command
+                        cmd = os.getenv('HOLEHE_CMD', 'holehe')
+                        if cmd == 'holehe':
+                             # Try to find in venv
+                             venv_holehe = os.path.join(os.path.dirname(__file__), '..', 'venv', 'bin', 'holehe')
+                             if os.path.exists(venv_holehe): cmd = venv_holehe
+
+                        # 2. Run Subprocess
+                        import subprocess
+                        import json
+                        result = subprocess.run([cmd, email, '--only-used', '--no-color'], capture_output=True, text=True, timeout=120)
+                        
+                        # 3. Parse Output (Reuse Logic)
+                        output = result.stdout
+                        found_sites = []
+                        rate_limited = []
+                        for line in output.split('\n'):
+                            line = line.strip()
+                            if '[+]' in line:
+                                parts = line.split(']')
+                                if len(parts) > 1: found_sites.append(parts[1].strip())
+                            elif '[!]' in line or 'rate limit' in line.lower():
+                                parts = line.split(']')
+                                if len(parts) > 1: rate_limited.append(parts[1].strip())
+                        
+                        # 4. Save to DB
+                        lead = Lead.query.filter_by(email=email).first()
+                        if lead:
+                            lead.holehe_data = json.dumps(found_sites)
+                            lead.scan_status = 'completed'
+                            lead.last_scan = datetime.utcnow()
+                            db.session.commit()
+                            print(f"ASYNC OSINT: Success for {email}. Found {len(found_sites)} sites.")
+                            
+                    except Exception as e:
+                        print(f"ASYNC OSINT ERROR: {e}")
+                        lead = Lead.query.filter_by(email=email).first()
+                        if lead:
+                            lead.scan_status = 'failed'
+                            db.session.commit()
                 
                 elif task['type'] == 'ai_analyze':
                     # Run Gemini (New SDK)
@@ -1233,56 +1283,35 @@ def analyze_email():
     email = request.form.get('email')
     if not email: return jsonify({'error': 'No email provided'}), 400
     
-    # REAL HOLEHE EXECUTION
-    import subprocess
-    import json
+    # 1. Update/Create Lead Status
+    lead = Lead.query.filter_by(email=email).first()
+    if not lead:
+        lead = Lead(email=email)
+        db.session.add(lead)
     
-    cmd = os.getenv('HOLEHE_CMD', 'holehe')
+    lead.scan_status = 'pending'
+    lead.last_scan = datetime.utcnow()
+    db.session.commit()
     
-    try:
-        # Run holehe --only-used --no-color <email>
-        if cmd == 'holehe':
-            venv_holehe = os.path.join(os.path.dirname(__file__), '..', 'venv', 'bin', 'holehe')
-            if os.path.exists(venv_holehe):
-                cmd = venv_holehe
-                
-        # print(f"Running OSINT: {cmd} {email}")
-        result = subprocess.run([cmd, email, '--only-used', '--no-color'], capture_output=True, text=True, timeout=45)
-        
-        output = result.stdout
-        found_sites = []
-        rate_limited = []
-        
-        for line in output.split('\n'):
-            line = line.strip()
-            if '[+]' in line:
-                # Example: [x] Instagram
-                # Some versions use [+] Name: Used
-                parts = line.split(']')
-                if len(parts) > 1:
-                     site = parts[1].strip()
-                     found_sites.append(site)
-            elif '[!]' in line or 'rate limit' in line.lower():
-                # Rate limited
-                parts = line.split(']')
-                if len(parts) > 1:
-                     site = parts[1].strip()
-                     rate_limited.append(site)
-        
-        # Update Lead
-        lead = Lead.query.filter_by(email=email).first()
-        if not lead:
-            lead = Lead(email=email)
-            db.session.add(lead)
-            
-        lead.holehe_data = json.dumps(found_sites)
-        db.session.commit()
-        
-        # V19: Render HTML Result (Enhanced)
-        return render_template('analysis_result.html', email=email, sites=found_sites, rate_limited=rate_limited, raw_log=output)
-        
-    except Exception as e:
-        return f"<h1>Scan Error</h1><pre>{e}</pre>"
+    # 2. Queue Task
+    log_queue.put({
+        'type': 'osint',
+        'email': email,
+        'lead_id': lead.id
+    })
+    
+    flash('OSINT Scan started in background 🦅', 'success')
+    return redirect(f'/dashboard/lead/{lead.id}')
+
+@app.route('/api/lead/<int:lead_id>/status')
+@login_required
+def lead_status_api(lead_id):
+    lead = Lead.query.get_or_404(lead_id)
+    return jsonify({
+        'status': lead.scan_status,
+        'sites': lead.holehe_data, # JSON string
+        'last_scan': lead.last_scan.isoformat() if lead.last_scan else None
+    })
         
 @app.route('/dashboard/export/<slug>')
 @login_required

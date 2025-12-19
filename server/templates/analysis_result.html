@@ -20,33 +20,32 @@
             </div>
             {% endfor %}
         </div>
-        {% endfor %}
-    </div>
-    {% else %}
-    <div style="text-align:center; padding:20px; color:var(--text-sec);">
-        No profiles found using registered modules.
-    </div>
-    {% endif %}
-
-    {% if rate_limited %}
-    <h4 style="text-align:center; color:#ffcc00; margin-bottom:10px;"><i class="fas fa-exclamation-triangle"></i> Rate
-        Limited</h4>
-    <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin-bottom:30px;">
-        {% for site in rate_limited %}
-        <div
-            style="background:rgba(255, 204, 0, 0.1); border:1px solid rgba(255, 204, 0, 0.3); padding:5px 10px; border-radius:4px; font-size:0.8rem; color:#ffcc00;">
-            {{ site }}
+        {% else %}
+        <div style="text-align:center; padding:20px; color:var(--text-sec);">
+            No profiles found using registered modules.
         </div>
-        {% endfor %}
-    </div>
-    {% endif %}
+        {% endif %}
 
-    <div
-        style="background:#111; padding:10px; border-radius:4px; max-height:150px; overflow-y:auto; font-size:0.7rem; color:gray; font-family:monospace; margin-bottom:20px;">
-        {{ raw_log }}
-    </div>
+        {% if rate_limited %}
+        <h4 style="text-align:center; color:#ffcc00; margin-bottom:10px;"><i class="fas fa-exclamation-triangle"></i>
+            Rate
+            Limited</h4>
+        <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin-bottom:30px;">
+            {% for site in rate_limited %}
+            <div
+                style="background:rgba(255, 204, 0, 0.1); border:1px solid rgba(255, 204, 0, 0.3); padding:5px 10px; border-radius:4px; font-size:0.8rem; color:#ffcc00;">
+                {{ site }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
 
-    <a href="/dashboard/contacts" class="btn" style="display:block; text-align:center;">RETURN TO CONTACTS</a>
-</div>
+        <div
+            style="background:#111; padding:10px; border-radius:4px; max-height:150px; overflow-y:auto; font-size:0.7rem; color:gray; font-family:monospace; margin-bottom:20px;">
+            {{ raw_log }}
+        </div>
+
+        <a href="/dashboard/contacts" class="btn" style="display:block; text-align:center;">RETURN TO CONTACTS</a>
+    </div>
 </div>
 {% endblock %}

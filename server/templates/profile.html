@@ -41,24 +41,72 @@
 
         <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin: 20px 0;">
 
-        <h4>OSINT Status</h4>
-        {% if lead.holehe_data %}
-        <div style="margin-top:10px;">
+        <h4>OSINT Status: <span id="status-badge" class="badge bg-secondary">{{ lead.scan_status|default('idle')|upper
+                }}</span></h4>
+
+        <div id="scan-results" style="margin-top:10px;">
+            {% if holehe_list %}
             {% for site in holehe_list %}
             <span class="badge badge-green" style="margin-right:5px; margin-bottom:5px; display:inline-block;">{{ site
                 }}</span>
             {% endfor %}
+            {% endif %}
         </div>
-        {% else %}
-        <p style="color:var(--text-sec); font-size:0.9rem;">No analysis run yet.</p>
-        {% endif %}
 
-        <form action="/dashboard/analyze_email" method="POST" target="_blank" style="margin-top:15px;">
+        <form action="/dashboard/analyze_email" method="POST" style="margin-top:15px;">
             <input type="hidden" name="email" value="{{ lead.email }}">
-            <!-- We should handle redirect back here ideally, for now separate tab -->
-            <button type="submit" class="btn-outline" style="width:100%;"><i class="fas fa-search"></i> RUN HOLEHE
-                SCAN</button>
+            {% if lead.scan_status == 'pending' %}
+            <button type="button" class="btn-outline" disabled style="width:100%; cursor:not-allowed;">
+                <i class="fas fa-spinner fa-spin"></i> SCANNING...
+            </button>
+            {% else %}
+            <button type="submit" class="btn-outline" style="width:100%;">
+                <i class="fas fa-satellite-dish"></i> RUN DEEP SCAN
+            </button>
+            {% endif %}
         </form>
+
+        <script>
+            const leadId = {{ lead.id }};
+            const currentStatus = "{{ lead.scan_status }}";
+            const resultsDiv = document.getElementById('scan-results');
+            const statusBadge = document.getElementById('status-badge');
+
+            if (currentStatus === 'pending') {
+                statusBadge.className = 'badge badge-yellow'; // Create check for yellow/orange
+                statusBadge.style.background = 'rgba(255, 204, 0, 0.2)';
+                statusBadge.style.color = '#ffcc00';
+
+                const poller = setInterval(() => {
+                    fetch(`/api/lead/${leadId}/status`)
+                        .then(r => r.json())
+                        .then(data => {
+                            statusBadge.innerText = data.status.toUpperCase();
+
+                            if (data.status === 'completed') {
+                                clearInterval(poller);
+                                statusBadge.style.background = 'rgba(0, 255, 157, 0.2)';
+                                statusBadge.style.color = '#00ff9d';
+                                statusBadge.className = 'badge badge-green';
+
+                                // Render Results
+                                try {
+                                    const sites = JSON.parse(data.sites);
+                                    resultsDiv.innerHTML = sites.map(s =>
+                                        `<span class="badge badge-green" style="margin-right:5px; margin-bottom:5px; display:inline-block;">${s}</span>`
+                                    ).join('');
+                                    // Refresh page to update graph
+                                    setTimeout(() => location.reload(), 1000);
+                                } catch (e) { }
+                            } else if (data.status === 'failed') {
+                                clearInterval(poller);
+                                statusBadge.innerText = 'FAILED';
+                                statusBadge.style.color = 'red';
+                            }
+                        });
+                }, 2000);
+            }
+        </script>
     </div>
 
     <!-- Right: Graph -->
