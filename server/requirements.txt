@@ -11,3 +11,4 @@ segno
 Pillow
 orjson
 google-generativeai
+holehe

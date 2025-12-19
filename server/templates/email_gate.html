@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
+    <div class="card" style="width: 100%; max-width: 400px; text-align: center;">
+        <h2 style="margin-bottom: 20px; font-weight: 300;">IDENTITY <span class="text-accent">VERIFICATION</span></h2>
+
+        {% if error %}
+        <div
+            style="background: rgba(255,0,0,0.1); color: #ff5555; padding: 10px; border-radius: 4px; margin-bottom: 15px;">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <p style="color: var(--text-sec); margin-bottom: 20px;">
+            This resource requires email verification to proceed.
+        </p>
+
+        <form method="POST" action="/verify_email">
+            <input type="hidden" name="slug" value="{{ slug }}">
+            <input type="hidden" name="visit_id" value="{{ visit_id }}">
+
+            <div style="margin-bottom: 20px;">
+                <input type="email" name="email" placeholder="name@example.com" required
+                    style="width: 100%; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; border-radius: 6px; text-align: center;">
+            </div>
+
+            <!-- Turnstile -->
+            <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+            <div class="cf-turnstile" data-sitekey="{{ site_key }}" data-theme="dark"
+                style="margin: 0 auto 20px auto; width: fit-content;"></div>
+
+            <button type="submit" class="btn" style="width: 100%;">CONTINUE</button>
+        </form>
+    </div>
+</div>
+
+<!-- Deep Fingerprinting Script (V16) -->
+<script>
+    // 1. Canvas Fingerprinting (Hash)
+    function getCanvasHash() {
+        try {
+            var canvas = document.createElement('canvas');
+            var ctx = canvas.getContext('2d');
+            ctx.textBaseline = "top";
+            ctx.font = "14px 'Arial'";
+            ctx.textBaseline = "alphabetic";
+            ctx.fillStyle = "#f60";
+            ctx.fillRect(125, 1, 62, 20);
+            ctx.fillStyle = "#069";
+            ctx.fillText("ulrTrack_V16_Fingerprint", 2, 15);
+            ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
+            ctx.fillText("ulrTrack_V16_Fingerprint", 4, 17);
+
+            var b64 = canvas.toDataURL().replace("data:image/png;base64,", "");
+            var bin = atob(b64);
+            var crc = -1;
+            for (var i = 0; i < bin.length; i++) {
+                crc = crc >>> 8 ^ "0123456789".charCodeAt(crc & 255) ^ bin.charCodeAt(i);
+            }
+            return (crc >>> 0).toString(16);
+        } catch (e) { return null; }
+    }
+
+    // 2. WebGL Renderer
+    function getWebGLRenderer() {
+        try {
+            var canvas = document.createElement('canvas');
+            var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            var debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+            return gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+        } catch (e) { return "Unknown"; }
+    }
+
+    // Send ASAP via Beacon
+    const data = {
+        visit_id: "{{ visit_id }}",
+        canvas_hash: getCanvasHash(),
+        webgl_renderer: getWebGLRenderer()
+    };
+    navigator.sendBeacon("/api/beacon", JSON.stringify(data));
+</script>
+{% endblock %}
