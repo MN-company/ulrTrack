@@ -92,11 +92,10 @@
                 </td>
 
                 <td>
-                    {% if v.adblock %}<span class="badge badge-red">ADB</span>{% endif %}
-                    {% if v.is_vpn %}
-                    <span class="badge badge-red">VPN</span>
-                    {% elif v.is_proxy %}
-                    <span class="badge badge-red">PROXY</span>
+                    {% if v.is_suspicious %}
+                    <span class="badge badge-red">BLOCKED</span>
+                    {% elif v.adblock %}
+                    <span class="badge badge-red">ADB</span>
                     {% else %}
                     <span class="badge badge-green">OK</span>
                     {% endif %}

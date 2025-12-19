@@ -737,10 +737,13 @@ def logout():
 def dashboard():
     links = Link.query.order_by(Link.created_at.desc()).all()
     total_clicks = Visit.query.count()
+    total_blocked = Visit.query.filter_by(is_suspicious=True).count()
+    
     return render_template('dashboard.html', 
                           links=links, 
                           total_links=len(links), 
                           total_clicks=total_clicks,
+                          total_blocked=total_blocked,
                           server_url=SERVER_URL)
 
 @app.route('/dashboard/create', methods=['POST'])
@@ -873,7 +876,9 @@ def dashboard_create_full():
             allow_no_js='allow_no_js' in request.form,
             block_adblock='block_adblock' in request.form, 
             allowed_countries=request.form.get('allowed_countries'),
-            schedule_timezone=request.form.get('schedule_timezone', 'UTC')
+            schedule_timezone=request.form.get('schedule_timezone', 'UTC'),
+            enable_captcha='enable_captcha' in request.form,
+            require_email='require_email' in request.form
         )
         
         # Hours

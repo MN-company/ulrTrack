@@ -49,11 +49,11 @@
     </div>
     <div class="metric-card">
         <div class="metric-val mono text-accent">{{ total_clicks }}</div>
-        <div class="metric-label">Total Clicks</div>
+        <div class="metric-label">Total Traffic</div>
     </div>
     <div class="metric-card">
-        <div class="metric-val mono text-accent">0%</div> <!-- Placeholder -->
-        <div class="metric-label">Block Rate</div>
+        <div class="metric-val mono" style="color: #ff5555;">{{ total_blocked }}</div>
+        <div class="metric-label">Blocked / Suspicious</div>
     </div>
     <div class="metric-card">
         <div class="metric-val mono">ON</div>
@@ -61,32 +61,7 @@
     </div>
 </div>
 
-<!-- Quick Create Bar -->
-<div class="card">
-    <form method="POST" action="/dashboard/create" class="quick-create">
-        <input type="url" name="destination" placeholder="Paste Target URL here..." required>
-
-        <input type="text" name="slug" placeholder="Slug (Opt)">
-
-        <!-- Minimized Filters/Options -->
-        <select name="block_bots">
-            <option value="true">Block Bot: ON</option>
-            <option value="false">Block Bot: OFF</option>
-        </select>
-
-        <select name="block_vpn">
-            <option value="false">Block VPN: OFF</option>
-            <option value="true">Block VPN: ON</option>
-        </select>
-
-        <button type="submit" class="btn"><i class="fas fa-bolt"></i> CREATE</button>
-    </form>
-    <div
-        style="margin-top: 10px; font-size: 0.8rem; color: var(--text-sec); display: flex; justify-content: space-between;">
-        <span><i class="fas fa-info-circle"></i> Quick Mode uses default settings.</span>
-        <a href="/dashboard/create_full" class="text-accent" style="font-weight: 600;">USE ADVANCED CREATOR &rarr;</a>
-    </div>
-</div>
+<!-- ... (Quick Create skipped) ... -->
 
 <!-- Links Table -->
 <div class="card" style="padding: 0;">
@@ -121,6 +96,8 @@
                     {% if link.block_bots %}<span class="badge badge-green">BOT</span>{% endif %}
                     {% if link.block_vpn %}<span class="badge badge-green">VPN</span>{% endif %}
                     {% if link.block_adblock %}<span class="badge badge-green">ADB</span>{% endif %}
+                    {% if link.enable_captcha %}<span class="badge badge-green">CAPTCHA</span>{% endif %}
+                    {% if link.require_email %}<span class="badge badge-green">EMAIL</span>{% endif %}
                     {% if link.allowed_countries %}<span class="badge badge-warning">{{ link.allowed_countries
                         }}</span>{% endif %}
                 </td>
