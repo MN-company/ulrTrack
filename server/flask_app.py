@@ -105,9 +105,17 @@ class Link(db.Model):
     
     # V16: Email Gate
     require_email = db.Column(db.Boolean, default=False)
+    
+    # Linked dynamically to Visits
 
+# V17/V18: Leads & Contacts
+class Lead(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    name = db.Column(db.String(100))
+    notes = db.Column(db.Text)
+    holehe_data = db.Column(db.Text) # JSON list of sites
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    visits = db.relationship('Visit', backref='link', lazy=True)
 
 class Visit(db.Model):
     id = db.Column(db.Integer, primary_key=True)
