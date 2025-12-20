@@ -188,3 +188,43 @@ def settings():
 def qr_view(slug):
     link = Link.query.filter_by(slug=slug).first_or_404()
     return render_template('qr_view.html', link=link, server_url=Config.SERVER_URL)
+
+@bp.route('/stats/<slug>')
+@login_required
+def stats(slug):
+    link = Link.query.filter_by(slug=slug).first_or_404()
+    
+    # Calculate Stats
+    visits = Visit.query.filter_by(link_id=link.id).order_by(Visit.timestamp.desc()).all()
+    
+    # Chart Data (Last 7 days)
+    from datetime import datetime, timedelta
+    from collections import defaultdict
+    
+    now = datetime.utcnow()
+    dates = [(now - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(6, -1, -1)]
+    clicks_map = defaultdict(int)
+    
+    for v in visits:
+        d = v.timestamp.strftime('%Y-%m-%d')
+        clicks_map[d] += 1
+        
+    chart_values = [clicks_map[d] for d in dates]
+    
+    # Top Countries
+    countries = defaultdict(int)
+    for v in visits: countries[v.country or 'Unknown'] += 1
+    top_countries = sorted(countries.items(), key=lambda x: x[1], reverse=True)[:5]
+    
+    # Referrers
+    referrers = defaultdict(int)
+    for v in visits: referrers[v.referrer or 'Direct'] += 1
+    top_referrers = sorted(referrers.items(), key=lambda x: x[1], reverse=True)[:5]
+
+    return render_template('stats.html', 
+                          link=link, 
+                          visits=visits[:100], # Limit log to 100
+                          chart_labels=dates,
+                          chart_values=chart_values,
+                          top_countries=top_countries,
+                          top_referrers=top_referrers)

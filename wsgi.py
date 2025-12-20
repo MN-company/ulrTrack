@@ -20,6 +20,8 @@ load_dotenv(os.path.join(project_home, '.env'))
 from server import create_app
 
 app = create_app()
+# PythonAnywhere looks for a variable named 'application' by default
+application = app
 
 if __name__ == '__main__':
     app.run()
