@@ -13,4 +13,9 @@ load_dotenv(os.path.join(project_home, '.env'))
 
 # 3. Import Flask app
 # Now we can import from 'server.flask_app' since we are IN the root folder
-from server.flask_app import app as application
+from server import create_app
+
+app = create_app()
+
+if __name__ == '__main__':
+    app.run()
