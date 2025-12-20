@@ -24,14 +24,28 @@ def start_worker(app):
                         print(f"ASYNC OSINT: Starting scan for {email}")
                         
                         try:
+                        try:
                             cmd = Config.HOLEHE_CMD
+                            # Auto-detect holehe in common locations if default
                             if cmd == 'holehe':
-                                # Try venv
-                                venv_holehe = os.path.join(os.path.dirname(app.root_path), '..', 'venv', 'bin', 'holehe')
-                                if os.path.exists(venv_holehe): cmd = venv_holehe
-
+                                possible_paths = [
+                                    os.path.join(os.path.dirname(app.root_path), '.venv', 'bin', 'holehe'),
+                                    os.path.join(os.path.dirname(app.root_path), 'venv', 'bin', 'holehe'),
+                                    '/usr/local/bin/holehe',
+                                    '/home/mncompany/.local/bin/holehe' # PythonAnywhere user path
+                                ]
+                                for p in possible_paths:
+                                    if os.path.exists(p):
+                                        cmd = p
+                                        break
+                                        
+                            print(f"ASYNC OSINT: Running {cmd} for {email}")
                             import subprocess
-                            result = subprocess.run([cmd, email, '--only-used', '--no-color'], capture_output=True, text=True, timeout=120)
+                            # Increased timeout to 180s for slow networks
+                            result = subprocess.run([cmd, email, '--only-used', '--no-color'], capture_output=True, text=True, timeout=180)
+                            
+                            if result.returncode != 0:
+                                print(f"Holehe Error (RC={result.returncode}): {result.stderr}")
                             
                             output = result.stdout
                             found_sites = []

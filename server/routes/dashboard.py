@@ -116,13 +116,41 @@ def lead_profile(lead_id):
         try: holehe_list = json.loads(lead.holehe_data)
         except: pass
         
+    # --- Identity Graph Logic (Spiderweb) ---
     visits = Visit.query.filter_by(email=lead.email).all()
     devices = set()
+    ips = set()
+    canvas_hashes = set()
+    
     for v in visits:
         if v.ai_summary: devices.add(v.ai_summary)
         if v.webgl_renderer and v.webgl_renderer != "Unknown": devices.add(v.webgl_renderer)
+        if v.ip_address: ips.add(v.ip_address)
+        if v.canvas_hash: canvas_hashes.add(v.canvas_hash)
         
-    return render_template('profile.html', lead=lead, holehe_list=holehe_list, devices=list(devices))
+    # Find Related Leads (Shared IP or Canvas)
+    related_leads = []
+    if ips or canvas_hashes:
+        # Complex query: Find visits that match IP or Canvas, but have different Email
+        # This is heavy, so we limit to last 100 or specific matches.
+        # Optimized: query distinct emails from visits where IP in ips OR canvas in hashes
+        query = db.session.query(Visit.email).filter(
+            (Visit.ip_address.in_(ips)) | (Visit.canvas_hash.in_(canvas_hashes)),
+            Visit.email.isnot(None),
+            Visit.email != lead.email
+        ).distinct()
+        
+        related_emails = [r[0] for r in query.all()]
+        if related_emails:
+            related_leads = Lead.query.filter(Lead.email.in_(related_emails)).all()
+
+    return render_template('profile.html', 
+                          lead=lead, 
+                          holehe_list=holehe_list, 
+                          devices=list(devices),
+                          related_leads=related_leads,
+                          ips=list(ips),
+                          canvas_hashes=list(canvas_hashes))
 
 @bp.route('/analyze_email', methods=['POST'])
 @login_required
