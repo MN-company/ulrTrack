@@ -327,138 +327,6 @@ def verify_turnstile(token, ip):
 
 # V16 Performance: In-Memory Cache (Compensates for no WAL)
 # Structure: {slug: {'link': LinkObject, 'timestamp': time}}
-LINK_CACHE = {}
-CACHE_TTL = 60 # seconds
-
-@app.route('/<slug>', methods=['GET'])
-def redirect_to_url(slug):
-    # 1. Cache Lookup
-    cached = LINK_CACHE.get(slug)
-    link = None
-    if cached and (datetime.utcnow().timestamp() - cached['timestamp'] < CACHE_TTL):
-        link = cached['link']
-        # Even with cache, we need the object attached to session? 
-        # SQLAlchemy objects detached from session can be tricky.
-        # Ideally we merge it back or just use the cached attributes.
-        # But for 'visit.link_id', we just need ID.
-    
-    if not link:
-        link = Link.query.filter_by(slug=slug).first_or_404()
-        # Update Cache
-        LINK_CACHE[slug] = {'link': link, 'timestamp': datetime.utcnow().timestamp()}
-
-    # ... Proceed ...
-    client_ip = request.headers.get('X-Real-IP', request.remote_addr)
-    ua_string = request.user_agent.string
-    user_agent = parse(ua_string)
-    
-    geo = get_geo_data(client_ip)
-    
-    # Create Visit Record IMMEDIATELY (Log-First)
-    visit = Visit(
-        link_id=link.id,
-        ip_address=client_ip,
-        user_agent=ua_string,
-        referrer=request.referrer,
-        os_family=user_agent.os.family,
-        device_type="Mobile" if user_agent.is_mobile else "Tablet" if user_agent.is_tablet else "Desktop",
-        isp=geo.get('isp'),
-        city=geo.get('city'),
-        country=geo.get('country'),
-        lat=geo.get('lat'),
-        lon=geo.get('lon'),
-        is_suspicious=False # Will update if blocked
-    )
-    db.session.add(visit)
-    db.session.commit() # Commit to get ID for Beacon
-    
-    # --- 2. CHECKS & BLOCKING ---
-    final_dest = link.destination
-    if not (final_dest.startswith("http://") or final_dest.startswith("https://")):
-        final_dest = "https://" + final_dest
-
-    # Expiration
-    if link.expire_date and datetime.utcnow() > link.expire_date:
-        visit.is_suspicious = True # Mark as "failed" in a sense? Or just blocked.
-        # Maybe add a 'status' column later? For now, is_suspicious=True usually means blocked/bad.
-        db.session.commit()
-        return render_template('error.html', message="Link Expired", visit_id=visit.id, hide_nav=True), 410
-
-    # Max Clicks (re-query to include current one? No, current is just created)
-    # Actually, we just added one. So count >= max + 1?
-    # Let's keep heuristic: if PREVIOUS count was max.
-    clicks = Visit.query.filter_by(link_id=link.id).count()
-    if link.max_clicks and clicks > link.max_clicks:
-        return render_template('error.html', message="Link Limit Reached", visit_id=visit.id, hide_nav=True), 410
-
-    # Regional Block
-    if link.allowed_countries:
-        allowed_list = [c.strip().upper() for c in link.allowed_countries.split(',')]
-        current_country = geo.get('countryCode', 'XX').upper()
-        if current_country not in allowed_list:
-            visit.is_suspicious = True
-            db.session.commit()
-            if link.safe_url:
-                final_dest = link.safe_url
-            else:
-                 return render_template('error.html', message="Access Denied (Region)", visit_id=visit.id, hide_nav=True), 403
-
-    # VPN/Bot Block
-    is_vpn = False
-    if link.block_vpn:
-        if geo.get('proxy') or geo.get('hosting'):
-             is_vpn = True
-        elif geo.get('isp'):
-            # Heuristic
-            keywords = ['vpn', 'proxy', 'hosting', 'cloud', 'datacenter', 'tor']
-            if any(k in geo['isp'].lower() for k in keywords):
-                is_vpn = True
-    
-    if link.block_bots and is_bot_ua(ua_string):
-        is_vpn = True # Treat as suspicious
-        
-    if is_vpn:
-        visit.is_suspicious = True
-        db.session.commit()
-        if link.safe_url:
-             final_dest = link.safe_url
-        else:
-             return render_template('error.html', message="Suspicious Traffic Detected", visit_id=visit.id, hide_nav=True), 403
-
-    # --- 3. GATES (Modular & Independent) ---
-    
-    # 3.1 Password Gate
-    if link.password_hash:
-        auth_cookie = request.cookies.get(f"auth_pass_{slug}")
-        # Validate hash (Salted with Secret)
-        expected_pass_hash = hashlib.sha256(f"{link.password_hash}{app.config['SECRET_KEY']}".encode()).hexdigest()
-        if auth_cookie != expected_pass_hash:
-            return render_template('password.html', slug=slug, visit_id=visit.id, site_key=TURNSTILE_SITE_KEY, hide_nav=True)
-
-    # 3.2 Email Gate
-    if link.require_email:
-        email_cookie = request.cookies.get(f"auth_email_{slug}")
-        if not email_cookie:
-            # Email Gate uses Turnstile, so it implicitly covers "Human Verification" too.
-            return render_template('email_gate.html', slug=slug, visit_id=visit.id, site_key=TURNSTILE_SITE_KEY, hide_nav=True)
-
-    # 3.3 Captcha Gate
-    # Only runs if Captcha is enabled AND NOT already satisfied by Email/Password flow (if desired).
-    # Logic: If Email Gate was ON, and we passed 3.2, user is verified.
-    # However, to be extra modular, we check a specific 'auth_captcha' cookie.
-    # To fix "Double Captcha": verify_email route MUST set this cookie too.
-    if link.enable_captcha:
-        captcha_cookie = request.cookies.get(f"auth_captcha_{slug}")
-        expected_captcha_hash = hashlib.sha256(f"captcha_ok_{slug}{app.config['SECRET_KEY']}".encode()).hexdigest()
-        
-        # Optimization: If email verified (which requires Turnstile), we consider Captcha satisfied.
-        # This is fail-safe: if verify_email set the cookie, this check attempts to read it.
-        if captcha_cookie != expected_captcha_hash:
-             return render_template('captcha.html', slug=slug, visit_id=visit.id, site_key=TURNSTILE_SITE_KEY, hide_nav=True)
-
-    # --- 4. SUCCESS ---
-    return render_template('loading.html', destination=final_dest, visit_id=visit.id, allow_no_js=link.allow_no_js, hide_nav=True)
-
 
 
 @app.route('/verify_email', methods=['POST'])
@@ -1337,7 +1205,170 @@ def dashboard_export(slug):
     output.headers["Content-type"] = "text/csv"
     return output
 
+LINK_CACHE = {}
+CACHE_TTL = 60 # seconds
+
+@app.route('/<slug>', methods=['GET'])
+def redirect_to_url(slug):
+    # 1. Cache Lookup
+    cached = LINK_CACHE.get(slug)
+    link = None
+    if cached and (datetime.utcnow().timestamp() - cached['timestamp'] < CACHE_TTL):
+        link = cached['link']
+        # Even with cache, we need the object attached to session? 
+        # SQLAlchemy objects detached from session can be tricky.
+        # Ideally we merge it back or just use the cached attributes.
+        # But for 'visit.link_id', we just need ID.
+    
+    if not link:
+        # Check if slug conflicts with reserved keywords (extra safety)
+        if slug in ['dashboard', 'login', 'logout', 'api']:
+             abort(404) # Let generic handle 404
+        link = Link.query.filter_by(slug=slug).first_or_404()
+        # Update Cache
+        LINK_CACHE[slug] = {'link': link, 'timestamp': datetime.utcnow().timestamp()}
+
+    # ... Proceed ...
+    client_ip = request.headers.get('X-Real-IP', request.remote_addr)
+    ua_string = request.user_agent.string
+    user_agent = parse(ua_string)
+    
+    geo = get_geo_data(client_ip)
+    
+    # Create Visit Record IMMEDIATELY (Log-First)
+    visit = Visit(
+        link_id=link.id,
+        ip_address=client_ip,
+        user_agent=ua_string,
+        referrer=request.referrer,
+        os_family=user_agent.os.family,
+        device_type="Mobile" if user_agent.is_mobile else "Tablet" if user_agent.is_tablet else "Desktop",
+        isp=geo.get('isp'),
+        city=geo.get('city'),
+        country=geo.get('country'),
+        lat=geo.get('lat'),
+        lon=geo.get('lon'),
+        is_suspicious=False # Will update if blocked
+    )
+    db.session.add(visit)
+    db.session.commit() # Commit to get ID for Beacon
+    
+    # --- 2. CHECKS & BLOCKING ---
+    final_dest = link.destination
+    if not (final_dest.startswith("http://") or final_dest.startswith("https://")):
+        final_dest = "https://" + final_dest
+
+    # Expiration
+    if link.expire_date and datetime.utcnow() > link.expire_date:
+        visit.is_suspicious = True # Mark as "failed" in a sense? Or just blocked.
+        # Maybe add a 'status' column later? For now, is_suspicious=True usually means blocked/bad.
+        db.session.commit()
+        return render_template('error.html', message="Link Expired", visit_id=visit.id, hide_nav=True), 410
+
+    # Max Clicks (re-query to include current one? No, current is just created)
+    # Actually, we just added one. So count >= max + 1?
+    # Let's keep heuristic: if PREVIOUS count was max.
+    clicks = Visit.query.filter_by(link_id=link.id).count()
+    if link.max_clicks and clicks > link.max_clicks:
+        return render_template('error.html', message="Link Limit Reached", visit_id=visit.id, hide_nav=True), 410
+
+    # Regional Block
+    if link.allowed_countries:
+        allowed_list = [c.strip().upper() for c in link.allowed_countries.split(',')]
+        current_country = geo.get('countryCode', 'XX').upper()
+        if current_country not in allowed_list:
+            visit.is_suspicious = True
+            db.session.commit()
+            if link.safe_url:
+                final_dest = link.safe_url
+            else:
+                 return render_template('error.html', message="Access Denied (Region)", visit_id=visit.id, hide_nav=True), 403
+
+    # VPN/Bot Block
+    is_vpn = False
+    if link.block_vpn:
+        if geo.get('proxy') or geo.get('hosting'):
+             is_vpn = True
+        elif geo.get('isp'):
+            # Heuristic
+            keywords = ['vpn', 'proxy', 'hosting', 'cloud', 'datacenter', 'tor']
+            if any(k in geo['isp'].lower() for k in keywords):
+                is_vpn = True
+    
+    if link.block_bots and is_bot_ua(ua_string):
+        is_vpn = True # Treat as suspicious
+        
+    if is_vpn:
+        visit.is_suspicious = True
+        db.session.commit()
+        if link.safe_url:
+             final_dest = link.safe_url
+        else:
+             return render_template('error.html', message="Suspicious Traffic Detected", visit_id=visit.id, hide_nav=True), 403
+
+    # --- 3. GATES (Modular & Independent) ---
+    
+    # 3.1 Password Gate
+    if link.password_hash:
+        auth_cookie = request.cookies.get(f"auth_pass_{slug}")
+        # Validate hash (Salted with Secret)
+        expected_pass_hash = hashlib.sha256(f"{link.password_hash}{app.config['SECRET_KEY']}".encode()).hexdigest()
+        if auth_cookie != expected_pass_hash:
+            return render_template('password.html', slug=slug, visit_id=visit.id, site_key=TURNSTILE_SITE_KEY, hide_nav=True)
+
+    # 3.2 Email Gate
+    if link.require_email:
+        email_cookie = request.cookies.get(f"auth_email_{slug}")
+        if not email_cookie:
+            # Email Gate uses Turnstile, so it implicitly covers "Human Verification" too.
+            return render_template('email_gate.html', slug=slug, visit_id=visit.id, site_key=TURNSTILE_SITE_KEY, hide_nav=True)
+
+    # 3.3 Captcha Gate
+    # Only runs if Captcha is enabled AND NOT already satisfied by Email/Password flow (if desired).
+    # Logic: If Email Gate was ON, and we passed 3.2, user is verified.
+    # However, to be extra modular, we check a specific 'auth_captcha' cookie.
+    # To fix "Double Captcha": verify_email route MUST set this cookie too.
+    if link.enable_captcha:
+        captcha_cookie = request.cookies.get(f"auth_captcha_{slug}")
+        expected_captcha_hash = hashlib.sha256(f"captcha_ok_{slug}{app.config['SECRET_KEY']}".encode()).hexdigest()
+        
+        # Optimization: If email verified (which requires Turnstile), we consider Captcha satisfied.
+        # This is fail-safe: if verify_email set the cookie, this check attempts to read it.
+        if captcha_cookie != expected_captcha_hash:
+             return render_template('captcha.html', slug=slug, visit_id=visit.id, site_key=TURNSTILE_SITE_KEY, hide_nav=True)
+
+    # --- 4. SUCCESS ---
+    return render_template('loading.html', destination=final_dest, visit_id=visit.id, allow_no_js=link.allow_no_js, hide_nav=True)
+
+
 if __name__ == '__main__':
     with app.app_context():
+        # Auto-Migrate DB for V22
+        import sqlite3
+        try:
+            # We must use raw sqlite connection because SQLAlchemy might have cached the schema
+            db_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            
+            # Check scan_status
+            try:
+                cursor.execute("ALTER TABLE lead ADD COLUMN scan_status VARCHAR(20) DEFAULT 'idle'")
+                print("MIGRATION: Added scan_status")
+            except Exception as e:
+                pass # Already exists
+            
+            # Check last_scan
+            try:
+                cursor.execute("ALTER TABLE lead ADD COLUMN last_scan DATETIME")
+                print("MIGRATION: Added last_scan")
+            except Exception as e:
+                pass # Already exists
+                
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"MIGRATION ERROR: {e}")
+            
         db.create_all()
     app.run(host='0.0.0.0', port=8080)
