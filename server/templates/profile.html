@@ -66,9 +66,21 @@
             {% endif %}
         </form>
 
+        <script id="server-data" type="application/json">
+            {
+                "lead": {
+                    "id": {{ lead.id | tojson }},
+                    "scan_status": {{ lead.scan_status | tojson }},
+                    "email": {{ lead.email | tojson }}
+                },
+                "holehe_list": {{ holehe_list | default([]) | tojson }},
+                "devices": {{ devices | default([]) | tojson }}
+            }
+        </script>
         <script>
-            const leadId = {{ lead.id }};
-            const currentStatus = "{{ lead.scan_status }}";
+            const serverData = JSON.parse(document.getElementById('server-data').textContent);
+            const leadId = serverData.lead.id;
+            const currentStatus = serverData.lead.scan_status;
             const resultsDiv = document.getElementById('scan-results');
             const statusBadge = document.getElementById('status-badge');
 
@@ -117,9 +129,10 @@
 </div>
 
 <script type="text/javascript">
+    const serverDataGraph = JSON.parse(document.getElementById('server-data').textContent);
     // Data Nodes
     var nodes = new vis.DataSet([
-        { id: 1, label: '{{ lead.email }}', color: '#00ff9d', shape: 'box', font: { color: 'black' } }
+        { id: 1, label: serverDataGraph.lead.email, color: '#00ff9d', shape: 'box', font: { color: 'black' } }
     ]);
 
     // Edges
@@ -128,18 +141,20 @@
     var nodeId = 2;
 
     // Add Socials
-    {% for site in holehe_list %}
-    nodes.add({ id: nodeId, label: '{{ site }}', color: '#00ccff', shape: 'ellipse' });
-    edges.add({ from: 1, to: nodeId });
-    nodeId++;
-    {% endfor %}
+    const holeheList = serverDataGraph.holehe_list;
+    holeheList.forEach(site => {
+        nodes.add({ id: nodeId, label: site, color: '#00ccff', shape: 'ellipse' });
+        edges.add({ from: 1, to: nodeId });
+        nodeId++;
+    });
 
     // Add Hardware (from Visits - passed via template)
-    {% for dev in devices %}
-    nodes.add({ id: nodeId, label: '{{ dev }}', color: '#ffcc00', shape: 'diamond' });
-    edges.add({ from: 1, to: nodeId });
-    nodeId++;
-    {% endfor %}
+    const devices = serverDataGraph.devices;
+    devices.forEach(dev => {
+        nodes.add({ id: nodeId, label: dev, color: '#ffcc00', shape: 'diamond' });
+        edges.add({ from: 1, to: nodeId });
+        nodeId++;
+    });
 
     var container = document.getElementById('network');
     var data = { nodes: nodes, edges: edges };

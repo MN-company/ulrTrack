@@ -24,7 +24,6 @@ def start_worker(app):
                         print(f"ASYNC OSINT: Starting scan for {email}")
                         
                         try:
-                        try:
                             cmd = Config.HOLEHE_CMD
                             # Auto-detect holehe in common locations if default
                             if cmd == 'holehe':

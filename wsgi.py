@@ -4,7 +4,12 @@ from dotenv import load_dotenv
 
 # 1. Add your project directory to the sys.path
 # We point DIRECTLY to the inner folder where 'server' package resides
-project_home = '/home/mncompany/mysite/url_shortener'
+
+# Get the directory containing this file (e.g., /home/mncompany/mysite/ulrTrack)
+# IMPORTANT: This must point to the folder that CONTAINS the 'server' folder.
+# It should NOT point to inside the 'server' folder itself.
+project_home = '/home/mncompany/mysite/ulrTrack'
+
 if project_home not in sys.path:
     sys.path.append(project_home)
 
@@ -12,7 +17,6 @@ if project_home not in sys.path:
 load_dotenv(os.path.join(project_home, '.env'))
 
 # 3. Import Flask app
-# Now we can import from 'server.flask_app' since we are IN the root folder
 from server import create_app
 
 app = create_app()

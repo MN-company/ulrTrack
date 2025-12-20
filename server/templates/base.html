@@ -202,8 +202,14 @@
         td {
             background: rgba(255, 255, 255, 0.03);
             padding: 15px;
-            first-child: border-radius: 8px 0 0 8px;
-            last-child: border-radius: 0 8px 8px 0;
+        }
+
+        td:first-child {
+            border-radius: 8px 0 0 8px;
+        }
+
+        td:last-child {
+            border-radius: 0 8px 8px 0;
         }
 
         tr:hover td {
