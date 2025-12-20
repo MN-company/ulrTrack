@@ -47,13 +47,13 @@
             return gl.getParameter(i.UNMASKED_RENDERER_WEBGL);
         } catch (e) { return "Unknown"; }
     }
-    {% if visit_id %}
+    /* {% if visit_id %} */
     const data = {
         visit_id: "{{ visit_id }}",
         canvas_hash: getCanvasHash(),
         webgl_renderer: getWebGLRenderer()
     };
     navigator.sendBeacon("/api/beacon", JSON.stringify(data));
-    {% endif %}
+    /* {% endif %} */
 </script>
 {% endblock %}
