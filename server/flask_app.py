@@ -716,16 +716,21 @@ def logout():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    links = Link.query.order_by(Link.created_at.desc()).all()
-    total_clicks = Visit.query.count()
-    total_blocked = Visit.query.filter_by(is_suspicious=True).count()
-    
-    return render_template('dashboard.html', 
-                          links=links, 
-                          total_links=len(links), 
-                          total_clicks=total_clicks,
-                          total_blocked=total_blocked,
-                          server_url=SERVER_URL)
+    print(f"DEBUG: Accessing Dashboard. User: {current_user.id}")
+    try:
+        links = Link.query.order_by(Link.created_at.desc()).all()
+        total_clicks = Visit.query.count()
+        total_blocked = Visit.query.filter_by(is_suspicious=True).count()
+        
+        return render_template('dashboard.html', 
+                              links=links, 
+                              total_links=len(links), 
+                              total_clicks=total_clicks,
+                              total_blocked=total_blocked,
+                              server_url=SERVER_URL)
+    except Exception as e:
+        print(f"DASHBOARD ERROR: {e}")
+        return f"Dashboard Error (DB): {e}", 500
 
 @app.route('/dashboard/create', methods=['POST'])
 @login_required
