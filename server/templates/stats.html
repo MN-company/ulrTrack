@@ -222,8 +222,8 @@
 
 <script>
     const ctx = document.getElementById('clicksChart').getContext('2d');
-    const labels = {{ chart_labels | safe }};
-    const data = {{ chart_values | safe }};
+    const labels = {{ chart_labels | tojson }};
+    const data = {{ chart_values | tojson }};
 
     new Chart(ctx, {
         type: 'line',

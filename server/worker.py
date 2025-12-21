@@ -8,200 +8,127 @@ import json
 
 def start_worker(app):
     """Starts the background worker thread with app context."""
-    def worker():
-        while True:
-            task = log_queue.get()
-            try:
-                with app.app_context():
-                    if task['type'] == 'log_visit':
-                        data = task['data']
-                        visit = Visit(**data)
-                        
-                        # --- V25: Ghost Correlation (De-anonymization) ---
-                        # If email is missing, try to link via Canvas Hash
-                        if not visit.email and data.get('canvas_hash'):
-                            ch = data.get('canvas_hash')
-                            # Find any previous visit with same hash AND an email
-                            match = Visit.query.filter(
-                                Visit.canvas_hash == ch, 
-                                Visit.email != None
-                            ).order_by(Visit.timestamp.desc()).first()
-                            
-                            if match:
-                                visit.email = match.email
-                                print(f"👻 GHOST CORRELATION: Anonymous user identified as {match.email} via Canvas {ch}")
-                                
-                        db.session.add(visit)
-                        db.session.commit()
-                        print(f"ASYNC LOG: Visit Saved ID={visit.id}")
+    print("Worker started...")
+    
+    def handle_task(task):
+        """Core logic for processing a single task."""
+        try:
+            with app.app_context():
+                if task['type'] == 'log_visit':
+                    data = task['data']
+                    visit = Visit(**data)
                     
-                    elif task['type'] == 'osint' and 'email' in task:
-                        email = task['email']
-                        print(f"ASYNC OSINT: Starting scan for {email}")
-                        
-                        # First, set the lead status to pending if exists
-                        lead = Lead.query.filter_by(email=email).first()
-                        if lead:
-                            lead.scan_status = 'pending'
-                            db.session.commit()
-                        
-                        found_sites = []
-                        error_msg = None
-                        
-                        try:
-                            # V36: Use holehe Python API directly instead of subprocess
-                            import asyncio
-                            import httpx
-                            from holehe.modules.social_media import twitter, instagram, facebook, linkedin, tiktok, snapchat, pinterest
-                            from holehe.modules.mails import google, protonmail, yahoo
-                            from holehe.modules.music import spotify
-                            from holehe.modules.shopping import amazon
+                    # Ghost Correlation
+                    if not visit.email and data.get('canvas_hash'):
+                        ch = data.get('canvas_hash')
+                        match = Visit.query.filter(Visit.canvas_hash == ch, Visit.email != None).order_by(Visit.timestamp.desc()).first()
+                        if match:
+                            visit.email = match.email
+                            print(f"👻 GHOST CORRELATION: Anonymous user identified as {match.email}")
                             
-                            async def check_module(module, client, email):
-                                try:
-                                    out = []
-                                    await module(email, client, out)
-                                    for r in out:
-                                        if r.get('exists') == True:
-                                            return r.get('name', module.__name__)
-                                except:
-                                    pass
-                                return None
-                            
-                            async def run_holehe():
-                                results = []
-                                modules = [twitter, instagram, facebook, linkedin, tiktok, 
-                                          snapchat, pinterest, google, protonmail, yahoo, 
-                                          spotify, amazon]
-                                
-                                async with httpx.AsyncClient(timeout=10.0) as client:
-                                    tasks = [check_module(m, client, email) for m in modules]
-                                    responses = await asyncio.gather(*tasks, return_exceptions=True)
-                                    for r in responses:
-                                        if r and not isinstance(r, Exception):
-                                            results.append(r)
-                                return results
-                            
-                            # Run async in thread
-                            loop = asyncio.new_event_loop()
-                            asyncio.set_event_loop(loop)
-                            found_sites = loop.run_until_complete(run_holehe())
-                            loop.close()
-                            
-                            print(f"ASYNC OSINT: Holehe found {len(found_sites)} sites for {email}")
-                            
-                        except ImportError as e:
-                            error_msg = f"Holehe not installed: {e}"
-                            print(f"ASYNC OSINT: {error_msg}")
-                        except Exception as e:
-                            error_msg = f"Holehe error: {str(e)[:100]}"
-                            print(f"ASYNC OSINT ERROR: {e}")
-                        
-                        # Save results
-                        lead = Lead.query.filter_by(email=email).first()
-                        if lead:
-                            if error_msg:
-                                lead.holehe_data = json.dumps([error_msg])
-                                lead.scan_status = 'failed'
-                            else:
-                                lead.holehe_data = json.dumps(found_sites)
-                                lead.scan_status = 'completed'
-                            lead.last_scan = datetime.utcnow()
-                            db.session.commit()
-                        
-                        # V34: Blackbird Username Search (if email has username pattern)
-                        try:
-                            local_part = email.split('@')[0]
-                            # Only run if local part looks like a username (no dots/numbers only)
-                            import re
-                            if re.match(r'^[a-zA-Z][a-zA-Z0-9_]{3,}$', local_part):
-                                blackbird_cmd = 'blackbird'
-                                # Try to find blackbird
-                                for p in ['/usr/local/bin/blackbird', '/home/mncompany/.local/bin/blackbird']:
-                                    if os.path.exists(p):
-                                        blackbird_cmd = p
-                                        break
-                                
-                                print(f"ASYNC OSINT: Running Blackbird for username {local_part}")
-                                import subprocess
-                                result = subprocess.run([blackbird_cmd, '-u', local_part, '--json'], 
-                                                       capture_output=True, text=True, timeout=120)
-                                
-                                if result.stdout:
-                                    lead = Lead.query.filter_by(email=email).first()
-                                    if lead:
-                                        import json as json_lib
-                                        cf = json_lib.loads(lead.custom_fields or '{}')
-                                        cf['blackbird'] = result.stdout[:2000]  # Limit size
-                                        lead.custom_fields = json_lib.dumps(cf)
-                                        db.session.commit()
-                                        print(f"ASYNC OSINT: Blackbird completed for {local_part}")
-                        except Exception as e:
-                            print(f"Blackbird Error: {e}")
-                            print(f"Blackbird Error: {e}")
+                    db.session.add(visit)
+                    db.session.commit()
+                    # print(f"ASYNC LOG: Visit Saved ID={visit.id}")
 
-                    # V43: Dedicated Blackbird Task
-                    elif task['type'] == 'blackbird':
-                        lead_id = task.get('lead_id')
-                        lead = Lead.query.get(lead_id)
-                        if lead:
-                            username = lead.email.split('@')[0]
-                            # Robust Command Detection
-                            import shutil
-                            blackbird_cmd = shutil.which('blackbird')
-                            if not blackbird_cmd:
-                                # Try common paths
-                                for p in ['/usr/local/bin/blackbird', '/usr/bin/blackbird', os.path.expanduser('~/.local/bin/blackbird')]:
-                                    if os.path.exists(p):
-                                        blackbird_cmd = p
-                                        break
+                elif task['type'] == 'osint' and 'email' in task:
+                    email = task['email']
+                    print(f"ASYNC OSINT: Starting scan for {email}")
+                    lead = Lead.query.filter_by(email=email).first()
+                    if lead:
+                        lead.scan_status = 'pending'
+                        db.session.commit()
+                        
+                    found_sites = []
+                    error_msg = None
+                    try:
+                        import asyncio
+                        import httpx
+                        from holehe.modules.social_media import twitter, instagram, facebook, linkedin, tiktok, snapchat, pinterest
+                        from holehe.modules.mails import google, protonmail, yahoo
+                        from holehe.modules.music import spotify
+                        from holehe.modules.shopping import amazon
+                        
+                        async def check_module(module, client, email):
+                            try:
+                                out = []
+                                await module(email, client, out)
+                                for r in out:
+                                    if r.get('exists') == True:
+                                        return r.get('name', module.__name__)
+                            except:
+                                pass
+                            return None
+                        
+                        async def run_holehe():
+                            results = []
+                            modules = [twitter, instagram, facebook, linkedin, tiktok, 
+                                      snapchat, pinterest, google, protonmail, yahoo, 
+                                      spotify, amazon]
                             
-                            if blackbird_cmd:
-                                try:
-                                    print(f"BLACKBIRD: scanning {username}...")
-                                    import subprocess
-                                    # Timeout increased to 120s
-                                    result = subprocess.run([blackbird_cmd, '-u', username, '--json'], 
-                                                          capture_output=True, text=True, timeout=120)
-                                    
+                            async with httpx.AsyncClient(timeout=10.0) as client:
+                                tasks = [check_module(m, client, email) for m in modules]
+                                responses = await asyncio.gather(*tasks, return_exceptions=True)
+                                for r in responses:
+                                    if r and not isinstance(r, Exception):
+                                        results.append(r)
+                            return results
+
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                        found_sites = loop.run_until_complete(run_holehe())
+                        loop.close()
+                        print(f"ASYNC OSINT: Holehe found {len(found_sites)} sites for {email}")
+                    except ImportError as e:
+                        error_msg = f"Holehe not installed: {e}"
+                        print(f"ASYNC OSINT: {error_msg}")
+                    except Exception as e:
+                        error_msg = f"Holehe error: {str(e)[:100]}"
+                        print(f"ASYNC OSINT ERROR: {e}")
+                        
+                    # Save results (Refetch lead to avoid session issues)
+                    lead = Lead.query.filter_by(email=email).first()
+                    if lead:
+                        if error_msg:
+                            lead.holehe_data = json.dumps([error_msg])
+                            lead.scan_status = 'failed'
+                        else:
+                            lead.holehe_data = json.dumps(found_sites)
+                            lead.scan_status = 'completed'
+                        lead.last_scan = datetime.utcnow()
+                        db.session.commit()
+                    
+                    # V34: Blackbird Username Search (if email has username pattern)
+                    try:
+                        local_part = email.split('@')[0]
+                        # Only run if local part looks like a username (no dots/numbers only)
+                        import re
+                        if re.match(r'^[a-zA-Z][a-zA-Z0-9_]{3,}$', local_part):
+                            blackbird_cmd = 'blackbird'
+                            # Try to find blackbird
+                            for p in ['/usr/local/bin/blackbird', '/home/mncompany/.local/bin/blackbird']:
+                                if os.path.exists(p):
+                                    blackbird_cmd = p
+                                    break
+                            
+                            print(f"ASYNC OSINT: Running Blackbird for username {local_part}")
+                            import subprocess
+                            result = subprocess.run([blackbird_cmd, '-u', local_part, '--json'], 
+                                                   capture_output=True, text=True, timeout=120)
+                            
+                            if result.stdout:
+                                lead = Lead.query.filter_by(email=email).first()
+                                if lead:
                                     import json as json_lib
                                     cf = json_lib.loads(lead.custom_fields or '{}')
-                                    # Parse JSON output if possible, else save raw stdout
-                                    try:
-                                        # Blackbird outputs JSON to a file usually, but --json flag might print to stdout depending on version
-                                        # If stdout is empty, check for file?
-                                        # For now assume stdout or just raw text
-                                        output = result.stdout
-                                        if not output and result.stderr: output = "Error: " + result.stderr
-                                        cf['blackbird'] = output[:5000]
-                                    except:
-                                        cf['blackbird'] = result.stdout[:5000]
-                                        
+                                    cf['blackbird'] = result.stdout[:2000]  # Limit size
                                     lead.custom_fields = json_lib.dumps(cf)
-                                    lead.last_scan = datetime.utcnow()
                                     db.session.commit()
-                                    print(f"BLACKBIRD: Success for {username}")
-                                except Exception as e:
-                                    print(f"Blackbird Execution Error: {e}")
-                            else:
-                                print("BLACKBIRD: Command not found.")
-                        v_id = task['visit_id']
-                        ua = task['ua']
-                        screen = task['screen']
-                        visit = Visit.query.get(v_id)
-                        if visit and Config.GEMINI_API_KEY:
-                            try:
-                                from .ai_engine import ai
-                                prompt = f"Identify device from UA: '{ua}' and Screen: '{screen}'. Return ONLY device name."
-                                visit.ai_summary = ai.generate(prompt)
-                                db.session.commit()
-                                print(f"AI ANALYSIS: {visit.ai_summary}")
-                            except Exception as e:
-                                print(f"AI Error: {e}")
+                                    db.session.commit()
+                        except Exception as e:
+                            print(f"Blackbird/Username Error: {e}")
 
-                    # V31: AI Identity Inference (Advanced OSINT)
-                    elif task['type'] == 'identity_inference':
-                        lead_id = task.get('lead_id')
+                elif task['type'] == 'identity_inference':
+                    lead_id = task.get('lead_id')
                         lead = Lead.query.get(lead_id)
                         if lead and Config.GEMINI_API_KEY:
                             try:
