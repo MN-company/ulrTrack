@@ -14,6 +14,17 @@ def create_app():
     login_manager.login_view = 'auth.login'
     limiter.init_app(app)
 
+    # V29: Markdown Support for AI
+    @app.template_filter('markdown')
+    def render_markdown(text):
+        if not text: return ""
+        try:
+            import markdown
+            return markdown.markdown(text)
+        except ImportError:
+            # Fallback: Simple line breaks if lib missing
+            return text.replace('\n', '<br>')
+
     # Auto-Migrate (Production Fix)
     with app.app_context():
         import sqlite3
@@ -46,6 +57,12 @@ def create_app():
             
             # V27 ETag
             try: c.execute("ALTER TABLE visit ADD COLUMN etag VARCHAR(64)")
+            except: pass
+            
+            # V45 Senior Fingerprinting
+            try: c.execute("ALTER TABLE visit ADD COLUMN screen_res VARCHAR(32)")
+            except: pass
+            try: c.execute("ALTER TABLE visit ADD COLUMN timezone VARCHAR(64)")
             except: pass
             
             # V28 IP Identity

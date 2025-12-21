@@ -74,11 +74,27 @@ def redirect_to_url(slug):
     is_bot = is_bot_ua(ua_string) or geo.get('hosting') == True
     
     # Check for known Cloud Providers (urlscan.io often uses these)
-    if not is_bot and geo.get('org'):
-        cloud_providers = ['google', 'amazon', 'microsoft', 'digitalocean', 'oracle', 'aliyun', 'hetzner']
+    # Check for known Cloud Providers (Strict VPN/Proxy detection)
+    if geo.get('org'):
+        cloud_providers = [
+            'google', 'amazon', 'microsoft', 'digitalocean', 'oracle', 'aliyun', 'hetzner',
+            'ovh', 'linode', 'vultr', 'lease', 'dedibox', 'choopa', 'm247', 'fly.io'
+        ]
         org_lower = geo.get('org').lower()
         if any(p in org_lower for p in cloud_providers):
-            is_bot = True
+            is_bot = True # Identify as non-residential
+            
+    # V22: VPN Block Logic (Explicit)
+    # Block if Hosting=True OR if it's a known Cloud Provider (regardless of Bot/UserAgent)
+    is_vpn_or_cloud = geo.get('hosting') == True or (geo.get('org') and any(p in geo.get('org').lower() for p in cloud_providers))
+    
+    if link.block_vpn and is_vpn_or_cloud:
+        visit.is_suspicious = True
+        db.session.commit()
+        if link.safe_url:
+             final_dest = link.safe_url
+        else:
+             return render_template('error.html', message="Anonymizer/VPN/Cloud IP Detected", visit_id=visit.id, hide_nav=True), 403
 
     if link.block_vpn and geo.get('hosting') == True:
         visit.is_suspicious = True
@@ -150,7 +166,14 @@ def verify_email():
     visit = Visit.query.get(visit_id)
     
     # 2. Email Policy Enforcement (V23)
-    from ..utils import is_disposable_email, is_privacy_email
+    from ..utils import is_disposable_email, is_privacy_email, validate_email_strict
+    
+    # SENIOR VALIDATION: Gibberish & Strict Syntax
+    is_valid_strict, strict_reason = validate_email_strict(email)
+    if not is_valid_strict:
+         return render_template('email_gate.html', 
+                                 slug=slug, visit_id=visit_id, site_key=Config.TURNSTILE_SITE_KEY,
+                                 error=strict_reason)
     
     # Policy: Certified Only (Block Temp)
     if link.email_policy in ['certified', 'trackable']:

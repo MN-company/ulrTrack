@@ -15,7 +15,7 @@ def receive_beacon():
             if v_id:
                 visit = Visit.query.get(v_id)
                 if visit:
-                    visit.screen_res = data.get('screen', 'Unknown')
+                    visit.screen_res = data.get('screen_res', 'Unknown')
                     visit.timezone = data.get('timezone', 'Unknown')
                     visit.browser_bot = bool(data.get('webdriver', False))
                     visit.browser_language = data.get('language', 'Unknown')

@@ -144,17 +144,13 @@
                 <td class="mono" style="font-size: 1.1rem;">{{ link.visits|length }}</td>
                 <td class="mono" style="font-size: 0.9rem; color: var(--text-sec);">
                     {{ link.created_at.strftime('%Y-%m-%d') }}
-                    <div style="font-size: 0.7rem; color: #888; margin-top:2px;">
-                        {% set active_orgs = link.visits | selectattr("org") | map(attribute="org") | list %}
-                        {% if active_orgs %}
-                        <i class="fas fa-building"></i> {{ active_orgs[0] }}
-                        {% endif %}
+                    <div style="font-size:0.8rem;">
+                        <!-- Freed up space (User Request) -->
                     </div>
                 </td>
                 <td style="text-align: right; padding-right: 24px;">
                     <div class="flex-row" style="justify-content: flex-end;">
-                        <button class="btn-outline btn-sm" onclick="copyLink('{{ server_url }}/{{ link.slug }}')"><i
-                                class="fas fa-copy"></i></button>
+                        <button class="btn-outline btn-sm" /" ~ link.slug) }}')"><i class="fas fa-copy"></i></button>
                         <a href="/dashboard/qr_view/{{ link.slug }}" class="btn-outline btn-sm"><i
                                 class="fas fa-qrcode"></i></a>
                         <a href="/dashboard/stats/{{ link.slug }}" class="btn-outline btn-sm"><i

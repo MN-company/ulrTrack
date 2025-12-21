@@ -11,8 +11,78 @@ def is_bot_ua(ua_string):
         'expand', 'preview', 'peeker', 'twitter', 'discord', 'slack', 'go-http-client', 'python-requests',
         'headless', 'phantomjs', 'puppeteer', 'selenium', 'urlscan', 'lighthouse', 'gtmetrix', 'pingdom'
     ]
+    ]
     ua_lower = ua_string.lower()
     return any(bot in ua_lower for bot in bots)
+
+def calculate_entropy(text):
+    """Calculates Shannon entropy of a string."""
+    import math
+    if not text: return 0
+    entropy = 0
+    for x in set(text):
+        p_x = text.count(x) / len(text)
+        entropy -= p_x * math.log2(p_x)
+    return entropy
+
+def is_gibberish_email(email):
+    """
+    Detects keyboard-smash or garbage emails based on heuristics.
+    Returns (True, Reason) if gibberish, (False, None) otherwise.
+    """
+    if not email or '@' not in email: return True, "Invalid Format"
+    
+    local_part = email.split('@')[0].lower()
+    
+    # 1. Length Checks
+    if len(local_part) < 3: return True, "Too Short"
+    
+    # 2. Entropy Check
+    # 'aaaaa' -> 0.0, 'abcdef' -> 2.58
+    # 'asdasd' -> 1.58
+    ent = calculate_entropy(local_part)
+    if ent < 1.0 and len(local_part) > 3: return True, "Low Entropy (Repetitive)"
+    
+    # 3. Consonant Clusters
+    # English rarely has > 5 consecutive consonants
+    vowels = "aeiouy"
+    consec_cons = 0
+    max_consec_cons = 0
+    for char in local_part:
+        if char.isalpha():
+            if char not in vowels:
+                consec_cons += 1
+                max_consec_cons = max(max_consec_cons, consec_cons)
+            else:
+                consec_cons = 0
+    
+    if max_consec_cons > 5: return True, "High Consonant Cluster"
+    
+    # 4. Keyboard Smash Patterns (Basic)
+    bad_patterns = ['asdf', 'qwer', 'zxcv', '1234', 'test', 'demo', 'qwerty']
+    if any(p in local_part for p in bad_patterns):
+        return True, "Common Pattern"
+
+    return False, None
+
+def validate_email_strict(email):
+    """
+    Strict validation combining syntax, gibberish check, and domain rules.
+    """
+    import re
+    # Syntax
+    if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+        return False, "Invalid Syntax"
+        
+    # Gibberish
+    is_bad, reason = is_gibberish_email(email)
+    if is_bad:
+        return False, f"Gibberish Detected: {reason}"
+        
+    # Disposable (Basic - heavily relied on list elsewhere, this is fallback)
+    # in public.py we use is_disposable_email
+    
+    return True, "Valid"
 
 def generate_slug(length=6):
     """Generates a random alphanumeric slug."""

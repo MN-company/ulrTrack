@@ -117,6 +117,68 @@ class AIEngine:
             
             return f"AI Generation Failed: {err_str}"
 
+    def query_db(self, query):
+        """Execute Read-Only SQL Query for Agentic AI."""
+        from .extensions import db
+        from sqlalchemy import text
+        try:
+            # Basic Safety: Read-only heuristic
+            q_lower = query.lower().strip()
+            if q_lower.startswith(("drop", "delete", "update", "insert", "alter", "create", "truncate")):
+                 return "Security Error: Read-only access allowed."
+            
+            result = db.session.execute(text(query))
+            if result.returns_rows:
+                rows = [dict(row) for row in result.mappings()]
+                return str(rows[:50]) # Limit output
+            return "Query Executed (No Rows)"
+        except Exception as e:
+            return f"SQL Error: {e}"
+
+    def run_agentic_loop(self, user_prompt, model=None):
+        """
+        Two-step Agentic Loop:
+        1. AI decides if it needs data.
+        2. If SQL generated, execute and feed back.
+        """
+        # System Prompt with Schema Context
+        schema_context = """
+        SYSTEM: You have READ-ONLY SQL access.
+        Schema:
+        - Lead(id, email, name, holehe_data, custom_fields, tags, created_at)
+        - Link(id, slug, destination, visit_count)
+        - Visit(id, link_id, ip_address, country, city, user_agent, timestamp, org, isp, canvas_hash, system_data)
+        
+        To query, output ONLY:
+        ```sql
+        SELECT ...
+        ```
+        If no query needed, just answer directly.
+        """
+        
+        # Turn 1
+        full_prompt = f"{schema_context}\n\nUser: {user_prompt}"
+        response_1 = self.generate(full_prompt, model)
+        
+        # Check for SQL Block
+        import re
+        sql_match = re.search(r"```sql\n(.*?)\n```", response_1, re.DOTALL)
+        if not sql_match:
+             # Try variant without newline
+             sql_match = re.search(r"```sql(.*?)```", response_1, re.DOTALL)
+
+        if sql_match:
+            sql_query = sql_match.group(1).strip()
+            # print(f"AI AGENT: Executing SQL: {sql_query}") # Debug
+            db_result = self.query_db(sql_query)
+            
+            # Turn 2: Feed result back
+            follow_up = f"{full_prompt}\n\nAI Proposal: {response_1}\n\nSYSTEM: Query Result: {db_result}\n\nUser: Now answer the original question based on this data."
+            final_response = self.generate(follow_up, model)
+            return final_response
+            
+        return response_1
+
     def generate_dorks(self, email):
         prompt = f"""Target: {email}
 Action: Generate 5 advanced Google Dorks to find exposed documents, logs, or passwords.
