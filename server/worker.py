@@ -123,12 +123,11 @@ def start_worker(app):
                                     cf['blackbird'] = result.stdout[:2000]  # Limit size
                                     lead.custom_fields = json_lib.dumps(cf)
                                     db.session.commit()
-                                    db.session.commit()
                         except Exception as e:
                             print(f"Blackbird/Username Error: {e}")
 
-                elif task['type'] == 'identity_inference':
-                    lead_id = task.get('lead_id')
+                    elif task['type'] == 'identity_inference':
+                        lead_id = task.get('lead_id')
                         lead = Lead.query.get(lead_id)
                         if lead and Config.GEMINI_API_KEY:
                             try:
