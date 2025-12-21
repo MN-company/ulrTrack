@@ -62,7 +62,6 @@ def create_link():
         block_bots=request.form.get('block_bots') == 'true', 
         block_vpn=request.form.get('block_vpn') == 'true',
         enable_captcha=request.form.get('enable_captcha') == 'true',
-        enable_captcha=request.form.get('enable_captcha') == 'true',
         require_email=request.form.get('require_email') == 'true',
         email_policy=request.form.get('email_policy', 'all')
     )
