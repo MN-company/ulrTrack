@@ -25,6 +25,37 @@ def create_app():
             except: pass
             try: c.execute("ALTER TABLE lead ADD COLUMN last_scan DATETIME")
             except: pass
+            
+            # V22 Overhaul Migrations
+            try: c.execute("ALTER TABLE lead ADD COLUMN tags VARCHAR(256) DEFAULT ''")
+            except: pass
+            try: c.execute("ALTER TABLE lead ADD COLUMN custom_fields TEXT DEFAULT '{}'")
+            except: pass
+            
+            # V23 Email Policy
+            try: c.execute("ALTER TABLE link ADD COLUMN email_policy VARCHAR(20) DEFAULT 'all'")
+            except: pass
+            
+            # V24 Pro Fingerprinting
+            try: c.execute("ALTER TABLE visit ADD COLUMN battery_level VARCHAR(20)")
+            except: pass
+            try: c.execute("ALTER TABLE visit ADD COLUMN cpu_cores INTEGER")
+            except: pass
+            try: c.execute("ALTER TABLE visit ADD COLUMN ram_gb REAL")
+            except: pass
+            
+            # V27 ETag
+            try: c.execute("ALTER TABLE visit ADD COLUMN etag VARCHAR(64)")
+            except: pass
+            
+            # V28 IP Identity
+            try: c.execute("ALTER TABLE visit ADD COLUMN org VARCHAR(128)")
+            except: pass
+            
+            # V29 Reverse DNS
+            try: c.execute("ALTER TABLE visit ADD COLUMN hostname VARCHAR(256)")
+            except: pass
+            
             conn.commit()
             conn.close()
         except Exception: pass

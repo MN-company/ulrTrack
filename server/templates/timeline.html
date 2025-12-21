@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2><i class="fas fa-stream"></i> Global Timeline</h2>
+    <a href="/dashboard" class="btn-outline">Back</a>
+</div>
+
+<!-- Search & Filters -->
+<div class="card" style="margin-bottom: 20px;">
+    <form method="GET" style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end;">
+        <!-- Search -->
+        <div style="flex: 2;">
+            <label style="display:block; font-size:0.8rem; color:var(--text-sec); margin-bottom:5px;">Search</label>
+            <input type="text" name="q" value="{{ q }}" placeholder="IP, Email, Hostname, Org, Fingerprint..."
+                style="width:100%;">
+        </div>
+
+        <!-- Country -->
+        <div style="flex: 1;">
+            <label style="display:block; font-size:0.8rem; color:var(--text-sec); margin-bottom:5px;">Country</label>
+            <select name="country" style="width:100%;">
+                <option value="">All Countries</option>
+                {% for c in countries %}
+                <option value="{{ c }}" {% if c==country %}selected{% endif %}>{{ c }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Device -->
+        <div style="flex: 1;">
+            <label style="display:block; font-size:0.8rem; color:var(--text-sec); margin-bottom:5px;">Device</label>
+            <select name="device" style="width:100%;">
+                <option value="">All Devices</option>
+                {% for d in devices %}
+                <option value="{{ d }}" {% if d==device %}selected{% endif %}>{{ d }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Days -->
+        <div style="flex: 1;">
+            <label style="display:block; font-size:0.8rem; color:var(--text-sec); margin-bottom:5px;">Period</label>
+            <select name="days" style="width:100%;">
+                <option value="1" {% if days==1 %}selected{% endif %}>Last 24h</option>
+                <option value="7" {% if days==7 %}selected{% endif %}>Last 7 days</option>
+                <option value="30" {% if days==30 %}selected{% endif %}>Last 30 days</option>
+                <option value="0" {% if days==0 %}selected{% endif %}>All time</option>
+            </select>
+        </div>
+
+        <button type="submit" class="btn"><i class="fas fa-search"></i> FILTER</button>
+    </form>
+</div>
+
+<!-- Results Count -->
+<div style="margin-bottom: 15px; color: var(--text-sec);">
+    Showing <strong>{{ visits|length }}</strong> visits
+    {% if q %} matching "<span class="text-accent">{{ q }}</span>"{% endif %}
+</div>
+
+<!-- Timeline Table -->
+<div class="card">
+    <table style="font-size: 0.85rem;">
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>Link</th>
+                <th>Visitor</th>
+                <th>Identity</th>
+                <th>Device</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for v in visits %}
+            <tr>
+                <td class="mono" style="color: var(--text-sec); white-space: nowrap;">
+                    {{ v.timestamp.strftime('%m/%d %H:%M') }}
+                </td>
+                <td>
+                    <a href="/dashboard/stats/{{ v.link.slug }}" class="text-accent">/{{ v.link.slug }}</a>
+                </td>
+                <td>
+                    <div class="mono" style="font-weight:600;">{{ v.ip_address }}</div>
+                    {% if v.hostname %}
+                    <div style="font-size: 0.75rem; color: #4CAF50;">{{ v.hostname }}</div>
+                    {% endif %}
+                    <div style="font-size: 0.75rem; color: #888;">
+                        {{ v.city or '' }}{% if v.city and v.country %}, {% endif %}{{ v.country or '' }}
+                        {% if v.org %}<br><i class="fas fa-building"></i> {{ v.org }}{% endif %}
+                    </div>
+                </td>
+                <td>
+                    {% if v.email %}
+                    <a href="/dashboard/lead/{{ v.email }}" class="text-accent" style="font-weight:600;">{{ v.email
+                        }}</a>
+                    {% else %}
+                    <span style="color:#666; font-style:italic;">Anonymous</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div>{{ v.os_family or '' }} / {{ v.device_type or '' }}</div>
+                    {% if v.ai_summary %}
+                    <div style="font-size: 0.75rem; color: var(--accent);">{{ v.ai_summary }}</div>
+                    {% endif %}
+                </td>
+                <td style="white-space: nowrap;">
+                    {% if v.canvas_hash %}
+                    <a href="/dashboard/device/{{ v.canvas_hash }}" class="btn-sm" title="Device Profile">
+                        <i class="fas fa-fingerprint"></i>
+                    </a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" style="text-align: center; color: #666; padding: 40px;">
+                    No visits found matching your criteria.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

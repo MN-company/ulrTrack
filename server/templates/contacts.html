@@ -3,7 +3,10 @@
 {% block content %}
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
     <h2><i class="fas fa-address-book"></i> Contacts / Leads</h2>
-    <a href="/dashboard" class="btn-outline">Back to Dashboard</a>
+    <div class="flex-row">
+        <a href="/dashboard/contacts/export_csv" class="btn-outline"><i class="fas fa-file-csv"></i> EXPORT CSV</a>
+        <a href="/dashboard" class="btn-outline">Back to Dashboard</a>
+    </div>
 </div>
 
 <div class="card">
@@ -44,6 +47,14 @@
                     </div>
                     {% if lead.name %}
                     <div style="font-size:0.8rem; color:var(--text-sec);">{{ lead.name }}</div>
+                    {% endif %}
+                    {% if lead.tags %}
+                    <div style="margin-top:4px;">
+                        {% for tag in lead.tags.split(',') %}
+                        <span class="badge badge-gray" style="font-size:0.7rem; padding:2px 6px;">{{ tag.strip()
+                            }}</span>
+                        {% endfor %}
+                    </div>
                     {% endif %}
                 </td>
                 <td class="mono" style="color:var(--text-sec);">

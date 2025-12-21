@@ -7,11 +7,37 @@
 {% block content %}
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
     <h2>Analytics: <span class="text-accent">/{{ link.slug }}</span></h2>
-    <div class="flex-row">
-        <a href="/dashboard/export/{{ link.slug }}" class="btn-outline"><i class="fas fa-download"></i> EXPORT CSV</a>
+    <div class="flex-row" style="gap: 10px;">
+        <!-- Export Dropdown -->
+        <div style="position: relative; display: inline-block;">
+            <button class="btn-outline" onclick="document.getElementById('exportMenu').classList.toggle('show')">
+                <i class="fas fa-download"></i> EXPORT ▾
+            </button>
+            <div id="exportMenu" class="dropdown-content"
+                style="display:none; position:absolute; right:0; top:100%; background:#1a1a1a; border:1px solid #333; border-radius:8px; min-width:150px; z-index:100;">
+                <a href="/dashboard/export/{{ link.slug }}/csv"
+                    style="display:block; padding:10px 15px; color:#fff; text-decoration:none; border-bottom:1px solid #333;">
+                    <i class="fas fa-file-csv"></i> CSV (Sheets)
+                </a>
+                <a href="/dashboard/export/{{ link.slug }}/json"
+                    style="display:block; padding:10px 15px; color:#fff; text-decoration:none; border-bottom:1px solid #333;">
+                    <i class="fas fa-code"></i> JSON (API)
+                </a>
+                <a href="/dashboard/export/{{ link.slug }}/pdf"
+                    style="display:block; padding:10px 15px; color:#fff; text-decoration:none;">
+                    <i class="fas fa-file-pdf"></i> PDF Report
+                </a>
+            </div>
+        </div>
         <a href="/dashboard" class="btn-outline">Back</a>
     </div>
 </div>
+
+<style>
+    .dropdown-content.show {
+        display: block !important;
+    }
+</style>
 
 <div class="card">
     <canvas id="clicksChart" style="max-height: 400px;"></canvas>
@@ -83,12 +109,31 @@
                 <!-- Visitor -->
                 <td>
                     <div class="mono" style="font-weight:600;">{{ v.ip_address }}</div>
+                    {% if v.hostname %}
+                    <div style="font-size: 0.75rem; color: #4CAF50; margin-bottom:2px;">
+                        <i class="fas fa-server"></i> {{ v.hostname }}
+                    </div>
+                    {% endif %}
                     <div style="font-size: 0.8rem; color: var(--text-sec);">
                         {{ v.isp or 'Unknown ISP' }}
+                        {% if v.org and v.org != v.isp %}
+                        <br><span style="color:#888;"><i class="fas fa-building"></i> {{ v.org }}</span>
+                        {% endif %}
                     </div>
                     <div style="font-size: 0.75rem; opacity: 0.7;">
                         <i class="fas fa-map-marker-alt"></i> {{ v.city }}, {{ v.country }}
                     </div>
+                    {% if v.ip_address in cross_link_data %}
+                    <div style="font-size: 0.7rem; color: #FF9800; margin-top:4px;" title="Also visited other links">
+                        <i class="fas fa-link"></i> +{{ cross_link_data[v.ip_address]|length }} other links
+                        <div style="font-size: 0.65rem; color: #888; margin-top:2px;">
+                            {% for cl in cross_link_data[v.ip_address][:3] %}
+                            <a href="/dashboard/stats/{{ cl.slug }}" style="color:#888;">/{{ cl.slug }}</a>{% if not
+                            loop.last %}, {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
                 </td>
 
                 <!-- Identity (V16 Email + Holehe) -->
@@ -137,11 +182,18 @@
                     <!-- Canvas Hash & UA -->
                     <div style="display:flex; gap:10px; margin-top:4px;">
                         {% if v.canvas_hash %}
-                        <span class="mono"
-                            style="font-size: 0.7rem; background:rgba(255,255,255,0.1); padding:2px 4px; border-radius:3px;"
-                            title="Canvas Hash">
-                            #{{ v.canvas_hash }}
-                        </span>
+                        <a href="/dashboard/device/{{ v.canvas_hash }}" class="mono"
+                            style="font-size: 0.7rem; background:rgba(255,255,255,0.1); padding:2px 4px; border-radius:3px; color: var(--accent);"
+                            title="View Device Profile">
+                            <i class="fas fa-fingerprint"></i> #{{ v.canvas_hash }}
+                        </a>
+                        {% endif %}
+                        {% if v.etag %}
+                        <a href="/dashboard/device/{{ v.etag }}" class="mono"
+                            style="font-size: 0.7rem; background:rgba(255,100,100,0.2); padding:2px 4px; border-radius:3px; color: #ff8888;"
+                            title="View Device Profile (ETag)">
+                            <i class="fas fa-cookie"></i> {{ v.etag[:8] }}...
+                        </a>
                         {% endif %}
                         <span style="font-size: 0.7rem; cursor: help; opacity: 0.6;" title="{{ v.user_agent }}">
                             UA Info ℹ️

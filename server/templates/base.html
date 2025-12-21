@@ -274,8 +274,11 @@
         <div class="logo">STEALTH<span>V17</span></div>
         <div class="nav-links">
             <a href="/dashboard" class="{% if request.path == '/dashboard' %}active{% endif %}">Dashboard</a>
+            <a href="/dashboard/timeline"
+                class="{% if request.path == '/dashboard/timeline' %}active{% endif %}">Timeline</a>
             <a href="/dashboard/contacts"
                 class="{% if request.path == '/dashboard/contacts' %}active{% endif %}">Contacts</a>
+            <a href="/dashboard/ai" class="{% if request.path == '/dashboard/ai' %}active{% endif %}">AI</a>
             <a href="/dashboard/settings">Settings</a>
         </div>
         <div>

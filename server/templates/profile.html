@@ -15,7 +15,11 @@
 
 {% block content %}
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-    <h2><i class="fas fa-user-secret"></i> Profile: <span class="text-accent">{{ lead.email }}</span></h2>
+    <div style="display:flex; align-items:center; gap:15px;">
+        <img src="https://www.gravatar.com/avatar/{{ lead.email | md5 }}?d=mp&s=64"
+            style="border-radius:50%; border:2px solid var(--accent); width:50px; height:50px;">
+        <h2><i class="fas fa-user-secret"></i> Profile: <span class="text-accent">{{ lead.email }}</span></h2>
+    </div>
     <a href="/dashboard/contacts" class="btn-outline">Back</a>
 </div>
 
@@ -31,13 +35,104 @@
             </div>
 
             <div class="form-group" style="margin-top:15px;">
+                <label>Tags (comma separated)</label>
+                <input type="text" name="tags" value="{{ lead.tags or '' }}" placeholder="e.g. vip, suspect, new">
+            </div>
+
+            <div class="form-group" style="margin-top:15px;">
                 <label>Notes</label>
                 <textarea name="notes"
                     style="width:100%; background:rgba(0,0,0,0.3); color:white; border:var(--border); border-radius:6px; padding:10px; min-height:100px;">{{ lead.notes or '' }}</textarea>
             </div>
 
-            <button type="submit" class="btn" style="margin-top:10px;">SAVE NOTES</button>
+            <button type="submit" class="btn" style="margin-top:10px;">SAVE PROFILE</button>
         </form>
+
+        <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin: 20px 0;">
+
+        <!-- V31: AI OSINT Intelligence -->
+        <h3><i class="fas fa-brain"></i> AI Intelligence</h3>
+
+        {% if ai_identity %}
+        <div
+            style="background: rgba(0,255,157,0.1); border: 1px solid var(--accent); border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+            <div style="font-size: 0.8rem; color: var(--accent); margin-bottom: 5px;">AI IDENTITY INFERENCE</div>
+            <div style="white-space: pre-line; font-size: 0.9rem;">{{ ai_identity }}</div>
+        </div>
+        {% else %}
+        <form action="/dashboard/analyze_identity/{{ lead.id }}" method="POST" style="margin-bottom:15px;">
+            <button type="submit" class="btn-outline btn-sm"><i class="fas fa-robot"></i> Run AI Identity
+                Analysis</button>
+        </form>
+        {% endif %}
+
+        {% if gaia_id %}
+        <div style="margin-bottom: 10px;">
+            <span style="color: var(--text-sec);">Gaia ID:</span>
+            <span class="mono text-accent">{{ gaia_id }}</span>
+        </div>
+        {% endif %}
+
+        {% if permutations.full_names %}
+        <div style="margin-bottom: 10px;">
+            <span style="color: var(--text-sec);">Possible Names:</span>
+            {% for name in permutations.full_names %}
+            <span class="badge badge-gray">{{ name }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if permutations.company %}
+        <div style="margin-bottom: 10px;">
+            <span style="color: var(--text-sec);">Company:</span>
+            <span class="badge badge-green">{{ permutations.company }}</span>
+        </div>
+        {% endif %}
+
+        {% if gravatar_data %}
+        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <div style="font-size: 0.8rem; color: var(--text-sec); margin-bottom: 5px;">GRAVATAR PROFILE</div>
+            {% if gravatar_data.displayName %}
+            <div><strong>Name:</strong> {{ gravatar_data.displayName }}</div>
+            {% endif %}
+            {% if gravatar_data.accounts %}
+            <div style="margin-top: 5px;">
+                <strong>Linked Accounts:</strong>
+                {% for acc in gravatar_data.accounts %}
+                <a href="{{ acc.url }}" target="_blank" style="color: var(--accent);">{{ acc.name }}</a>{% if not
+                loop.last %}, {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin: 20px 0;">
+
+        <h3>Activity Timeline</h3>
+        <div
+            style="max-height: 300px; overflow-y: auto; font-size: 0.85rem; border-left: 2px solid var(--border); padding-left: 15px;">
+            {% for v in timeline_visits %}
+            <div style="margin-bottom: 15px; position: relative;">
+                <div
+                    style="position: absolute; left: -21px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--accent);">
+                </div>
+                <div style="color: var(--text-sec); font-size: 0.75rem;">{{ v.timestamp.strftime('%Y-%m-%d %H:%M') }}
+                </div>
+                <div>
+                    Visited <a href="/dashboard/stats/{{ v.link.slug }}" class="text-accent">/{{ v.link.slug }}</a>
+                </div>
+                <div style="color: var(--text-sec);">
+                    IP: {{ v.ip_address }} | Device: {{ v.device_type }}
+                    {% if v.org %}
+                    <br><span style="color: #4CAF50;"><i class="fas fa-building"></i> {{ v.org }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <div style="color: var(--text-sec); font-style: italic;">No activity recorded for this contact.</div>
+            {% endfor %}
+        </div>
 
         <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin: 20px 0;">
 

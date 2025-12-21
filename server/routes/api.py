@@ -22,6 +22,12 @@ def receive_beacon():
                     visit.adblock = bool(data.get('adblock', False))
                     visit.canvas_hash = data.get('canvas_hash')
                     visit.webgl_renderer = data.get('webgl_renderer')
+                    
+                    # V24 Pro Data
+                    visit.cpu_cores = data.get('cpu_cores')
+                    visit.ram_gb = data.get('ram_gb')
+                    visit.battery_level = data.get('battery_level')
+                    
                     db.session.commit()
                     
                     log_queue.put({

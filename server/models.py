@@ -11,6 +11,11 @@ class Lead(db.Model):
     holehe_data = db.Column(db.Text) # JSON list of sites
     scan_status = db.Column(db.String(20), default='idle') # idle, pending, completed, failed
     last_scan = db.Column(db.DateTime, nullable=True)
+    
+    # V22: Contacts Overhaul
+    tags = db.Column(db.String(256), default='') # Comma separate tags: "vip, suspect"
+    custom_fields = db.Column(db.Text, default='{}') # JSON for extra data
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Link(db.Model):
@@ -48,6 +53,7 @@ class Link(db.Model):
     
     # V16: Email Gate
     require_email = db.Column(db.Boolean, default=False)
+    email_policy = db.Column(db.String(20), default='all') # all, certified, trackable
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     visits = db.relationship('Visit', backref='link', lazy=True)
@@ -67,6 +73,8 @@ class Visit(db.Model):
     
     # Deep Tracking (Geo & ISP)
     isp = db.Column(db.String(128))
+    org = db.Column(db.String(128)) # V28 Identity
+    hostname = db.Column(db.String(256), nullable=True) # V29 Reverse DNS
     city = db.Column(db.String(64))
     country = db.Column(db.String(64))
     lat = db.Column(db.Float)
@@ -85,6 +93,14 @@ class Visit(db.Model):
     canvas_hash = db.Column(db.String(64), nullable=True)
     webgl_renderer = db.Column(db.String(256), nullable=True)
     email = db.Column(db.String(256), nullable=True)
+
+    # V24 Pro Fingerprinting
+    battery_level = db.Column(db.String(20), nullable=True)
+    cpu_cores = db.Column(db.Integer, nullable=True)
+    ram_gb = db.Column(db.Float, nullable=True)
+
+    # V27 Zombie Cookie
+    etag = db.Column(db.String(64), nullable=True)
 
 # Auth User Model
 class User(UserMixin):

@@ -27,7 +27,55 @@
 
         // Call Obfuscated Metrics
         // passing dest as callback to redirect after beacon
-        sendMetrics(visitId, dest, true);
+
+        // --- V26: Optimized Speed & Fingerprinting ---
+        function getCanvasHash() {
+            try {
+                // Simplified hash for speed
+                var canvas = document.createElement('canvas');
+                var ctx = canvas.getContext('2d');
+                ctx.fillText("ulrTrack_V26", 2, 15);
+                return canvas.toDataURL().length.toString(16); // Very rough lazy hash for speed
+            } catch (e) { return null; }
+        }
+
+        async function getStats() {
+            var data = {
+                cpu: navigator.hardwareConcurrency || '?',
+                ram: navigator.deviceMemory || '?',
+                gpu: 'Unknown'
+            };
+            try {
+                // Async WebGL to not block main thread
+                var canvas = document.createElement('canvas');
+                var gl = canvas.getContext('webgl');
+                if (gl) {
+                    var debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                    data.gpu = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                }
+            } catch (e) { }
+            return data;
+        }
+
+        // FIRE AND FORGET
+        (async function () {
+            // 1. Trigger Redirect ASAP
+            setTimeout(function () { window.location.href = dest; }, 50); // 50ms buffer
+
+            // 2. Gather Data in background
+            try {
+                const stats = await getStats();
+                const fpData = {
+                    visit_id: visitId,
+                    canvas_hash: getCanvasHash(),
+                    webgl_renderer: stats.gpu,
+                    cpu_cores: stats.cpu,
+                    ram_gb: stats.ram
+                };
+                // Beacon is non-blocking
+                navigator.sendBeacon("/api/beacon", JSON.stringify(fpData));
+            } catch (e) { }
+        })();
     </script>
 
     <noscript>

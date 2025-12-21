@@ -20,7 +20,7 @@ class Config:
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
     TURNSTILE_SITE_KEY = os.getenv('TURNSTILE_SITE_KEY', 'default_site_key')
     TURNSTILE_SECRET_KEY = os.getenv('TURNSTILE_SECRET_KEY') # Mandatory
-    GEMINI_MODEL = os.getenv('gemini-3.0-flash-preview') # User requested SOTA
+    GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-3.0-flash-preview') # User requested SOTA
     AI_PROMPT = os.getenv('AI_PROMPT', 'You are a cybersecurity expert...')
-    PROXYCHECK_API_KEY = os.getenv('PROXYCHECK_API_KEY', '')
     HOLEHE_CMD = os.getenv('HOLEHE_CMD', 'holehe')
+    WEBHOOK_URL = os.getenv('WEBHOOK_URL') # Discord/Slack/Telegram webhook

@@ -1,10 +1,17 @@
-from flask import Blueprint, render_template, request, redirect, flash, send_file, url_for
+from flask import Blueprint, render_template, request, redirect, flash, send_file, url_for, make_response
 from flask_login import login_required, current_user
+import hashlib
+
+def md5_filter(s):
+    if not s: return ""
+    return hashlib.md5(s.lower().encode('utf-8')).hexdigest()
+
 import io
 import requests
 import segno
 import os
 from PIL import Image
+import json
 
 from ..models import Link, Visit, Lead
 from ..extensions import db, log_queue
@@ -12,7 +19,9 @@ from ..config import Config
 from ..utils import generate_slug, shorten_with_isgd
 
 bp = Blueprint('dashboard', __name__, url_prefix='/dashboard')
+bp.add_app_template_filter(md5_filter, 'md5')
 
+@bp.route('/')
 @bp.route('')
 @login_required
 def dashboard_home():
@@ -53,7 +62,9 @@ def create_link():
         block_bots=request.form.get('block_bots') == 'true', 
         block_vpn=request.form.get('block_vpn') == 'true',
         enable_captcha=request.form.get('enable_captcha') == 'true',
-        require_email=request.form.get('require_email') == 'true'
+        enable_captcha=request.form.get('enable_captcha') == 'true',
+        require_email=request.form.get('require_email') == 'true',
+        email_policy=request.form.get('email_policy', 'all')
     )
     
     if request.form.get('mask_url'):
@@ -99,6 +110,30 @@ def contacts():
     leads = Lead.query.order_by(Lead.created_at.desc()).all()
     return render_template('contacts.html', leads=leads)
 
+@bp.route('/contacts/export_csv')
+@login_required
+def export_contacts_csv():
+    import csv
+    from io import StringIO
+    
+    si = StringIO()
+    cw = csv.writer(si)
+    cw.writerow(['ID', 'Email', 'Name', 'Tags', 'Notes', 'Socials Found', 'Created At'])
+    
+    leads = Lead.query.all()
+    for l in leads:
+        count_socials = 0
+        if l.holehe_data:
+            try: count_socials = len(json.loads(l.holehe_data))
+            except: pass
+            
+        cw.writerow([l.id, l.email, l.name or '', l.tags or '', l.notes or '', count_socials, l.created_at])
+        
+    output = make_response(si.getvalue())
+    output.headers["Content-Disposition"] = "attachment; filename=contacts_export.csv"
+    output.headers["Content-type"] = "text/csv"
+    return output
+
 @bp.route('/lead/<int:lead_id>', methods=['GET', 'POST'])
 @login_required
 def lead_profile(lead_id):
@@ -106,6 +141,7 @@ def lead_profile(lead_id):
     if request.method == 'POST':
         lead.name = request.form.get('name')
         lead.notes = request.form.get('notes')
+        lead.tags = request.form.get('tags') # Save tags
         db.session.commit()
         flash('Profile updated.', 'success')
         return redirect(url_for('dashboard.lead_profile', lead_id=lead_id))
@@ -144,19 +180,42 @@ def lead_profile(lead_id):
         if related_emails:
             related_leads = Lead.query.filter(Lead.email.in_(related_emails)).all()
 
+    # V31: OSINT Enrichment Data
+    from ..utils import email_permutations, get_gravatar_profile
+    permutations = email_permutations(lead.email)
+    gravatar_data = get_gravatar_profile(lead.email)
+    
+    # Parse custom_fields for AI identity
+    ai_identity = None
+    gaia_id = None
+    try:
+        cf = json.loads(lead.custom_fields or '{}')
+        ai_identity = cf.get('ai_identity')
+        gaia_id = cf.get('gaia_id')
+    except:
+        pass
+
     return render_template('profile.html', 
                           lead=lead, 
                           holehe_list=holehe_list, 
                           devices=list(devices),
                           related_leads=related_leads,
                           ips=list(ips),
-                          canvas_hashes=list(canvas_hashes))
+                          canvas_hashes=list(canvas_hashes),
+                          timeline_visits=visits,
+                          permutations=permutations,
+                          gravatar_data=gravatar_data,
+                          ai_identity=ai_identity,
+                          gaia_id=gaia_id)
 
 @bp.route('/analyze_email', methods=['POST'])
 @login_required
 def analyze_email():
     email = request.form.get('email')
     if not email: return "No email", 400
+    if not email: 
+        flash('No email provided.', 'error')
+        return redirect('/dashboard/contacts')
     
     lead = Lead.query.filter_by(email=email).first()
     if not lead:
@@ -169,6 +228,165 @@ def analyze_email():
     log_queue.put({'type': 'osint', 'email': email, 'lead_id': lead.id})
     flash('Scan started.', 'success')
     return redirect(url_for('dashboard.lead_profile', lead_id=lead.id))
+
+@bp.route('/analyze_identity/<int:lead_id>', methods=['POST'])
+@login_required
+def analyze_identity(lead_id):
+    """V31: Trigger AI Identity Inference for a lead."""
+    lead = Lead.query.get_or_404(lead_id)
+    log_queue.put({'type': 'identity_inference', 'lead_id': lead_id})
+    flash('AI Identity Analysis queued. Refresh in a few seconds.', 'success')
+    return redirect(url_for('dashboard.lead_profile', lead_id=lead_id))
+
+# ============================================
+# V32: GLOBAL TIMELINE & SEARCH
+# ============================================
+
+@bp.route('/timeline')
+@login_required
+def global_timeline():
+    """V32: Global Timeline - All visits across all links."""
+    from datetime import datetime, timedelta
+    
+    # Get filter params
+    q = request.args.get('q', '').strip()
+    country = request.args.get('country', '')
+    device = request.args.get('device', '')
+    days = int(request.args.get('days', 7))
+    
+    # Base query
+    query = Visit.query
+    
+    # Date filter
+    if days > 0:
+        cutoff = datetime.utcnow() - timedelta(days=days)
+        query = query.filter(Visit.timestamp >= cutoff)
+    
+    # Search filter
+    if q:
+        search = f"%{q}%"
+        query = query.filter(
+            db.or_(
+                Visit.ip_address.ilike(search),
+                Visit.email.ilike(search),
+                Visit.hostname.ilike(search),
+                Visit.org.ilike(search),
+                Visit.city.ilike(search),
+                Visit.canvas_hash.ilike(search),
+                Visit.etag.ilike(search)
+            )
+        )
+    
+    # Country filter
+    if country:
+        query = query.filter(Visit.country == country)
+    
+    # Device filter
+    if device:
+        query = query.filter(Visit.device_type == device)
+    
+    visits = query.order_by(Visit.timestamp.desc()).limit(200).all()
+    
+    # Get unique countries and devices for filters
+    all_countries = db.session.query(Visit.country).distinct().all()
+    all_devices = db.session.query(Visit.device_type).distinct().all()
+    
+    return render_template('timeline.html',
+                          visits=visits,
+                          q=q,
+                          country=country,
+                          device=device,
+                          days=days,
+                          countries=[c[0] for c in all_countries if c[0]],
+                          devices=[d[0] for d in all_devices if d[0]])
+
+# ============================================
+# V33: AI DASHBOARD & AUTO-TAGGING
+# ============================================
+
+@bp.route('/ai')
+@login_required
+def ai_dashboard():
+    """V33: AI Dashboard - Overview of all AI analysis."""
+    
+    # Get all leads with AI analysis
+    leads_with_ai = Lead.query.filter(Lead.custom_fields.like('%ai_identity%')).all()
+    leads_pending = Lead.query.filter(
+        db.or_(
+            Lead.custom_fields == None,
+            Lead.custom_fields == '{}',
+            ~Lead.custom_fields.like('%ai_identity%')
+        )
+    ).all()
+    
+    # Parse AI data
+    ai_analyses = []
+    for lead in leads_with_ai:
+        try:
+            cf = json.loads(lead.custom_fields or '{}')
+            if cf.get('ai_identity'):
+                ai_analyses.append({
+                    'lead': lead,
+                    'identity': cf.get('ai_identity'),
+                    'gaia_id': cf.get('gaia_id'),
+                    'gravatar': cf.get('gravatar')
+                })
+        except:
+            pass
+    
+    # Stats
+    total_leads = Lead.query.count()
+    analyzed_count = len(ai_analyses)
+    pending_count = len(leads_pending)
+    
+    # Get recent device analyses
+    recent_visits = Visit.query.filter(Visit.ai_summary != None).order_by(Visit.timestamp.desc()).limit(20).all()
+    
+    return render_template('ai_dashboard.html',
+                          ai_analyses=ai_analyses,
+                          leads_pending=leads_pending[:20],
+                          total_leads=total_leads,
+                          analyzed_count=analyzed_count,
+                          pending_count=pending_count,
+                          recent_visits=recent_visits)
+
+@bp.route('/ai/analyze_all', methods=['POST'])
+@login_required
+def ai_analyze_all():
+    """Queue AI analysis for all pending leads."""
+    leads_pending = Lead.query.filter(
+        db.or_(
+            Lead.custom_fields == None,
+            Lead.custom_fields == '{}',
+            ~Lead.custom_fields.like('%ai_identity%')
+        )
+    ).all()
+    
+    for lead in leads_pending:
+        log_queue.put({'type': 'identity_inference', 'lead_id': lead.id})
+    
+    flash(f'Queued {len(leads_pending)} leads for AI analysis.', 'success')
+    return redirect(url_for('dashboard.ai_dashboard'))
+
+@bp.route('/ai/auto_tag', methods=['POST'])
+@login_required
+def ai_auto_tag():
+    """V33: Trigger AI Auto-Tagging for a lead."""
+    lead_id = request.form.get('lead_id')
+    if lead_id:
+        log_queue.put({'type': 'ai_auto_tag', 'lead_id': int(lead_id)})
+        flash('AI Auto-Tagging queued.', 'success')
+    return redirect(request.referrer or url_for('dashboard.ai_dashboard'))
+
+@bp.route('/ai/auto_tag_all', methods=['POST'])
+@login_required
+def ai_auto_tag_all():
+    """Queue AI auto-tagging for all leads."""
+    leads = Lead.query.all()
+    for lead in leads:
+        log_queue.put({'type': 'ai_auto_tag', 'lead_id': lead.id})
+    flash(f'Queued {len(leads)} leads for AI auto-tagging.', 'success')
+    return redirect(url_for('dashboard.ai_dashboard'))
 
 @bp.route('/settings', methods=['GET', 'POST'])
 @login_required
@@ -221,10 +439,232 @@ def stats(slug):
     for v in visits: referrers[v.referrer or 'Direct'] += 1
     top_referrers = sorted(referrers.items(), key=lambda x: x[1], reverse=True)[:5]
 
+    # V29: IP Cross-Link View (Find IPs that visited OTHER links too)
+    ip_addresses = list(set([v.ip_address for v in visits if v.ip_address]))
+    cross_link_data = {}
+    if ip_addresses:
+        cross_visits = Visit.query.filter(
+            Visit.ip_address.in_(ip_addresses),
+            Visit.link_id != link.id
+        ).all()
+        
+        for cv in cross_visits:
+            ip = cv.ip_address
+            if ip not in cross_link_data:
+                cross_link_data[ip] = []
+            # Avoid duplicates
+            if cv.link.slug not in [x['slug'] for x in cross_link_data[ip]]:
+                cross_link_data[ip].append({
+                    'slug': cv.link.slug,
+                    'timestamp': cv.timestamp,
+                    'email': cv.email
+                })
+
     return render_template('stats.html', 
                           link=link, 
                           visits=visits[:100], # Limit log to 100
                           chart_labels=dates,
                           chart_values=chart_values,
                           top_countries=top_countries,
-                          top_referrers=top_referrers)
+                          top_referrers=top_referrers,
+                          cross_link_data=cross_link_data)
+
+@bp.route('/device/<fingerprint>')
+@login_required
+def device_profile(fingerprint):
+    """V29: Device Cluster Page - View all activity from a specific fingerprint."""
+    
+    # Find all visits matching this fingerprint (canvas_hash OR etag)
+    visits = Visit.query.filter(
+        db.or_(
+            Visit.canvas_hash == fingerprint,
+            Visit.etag == fingerprint
+        )
+    ).order_by(Visit.timestamp.desc()).all()
+    
+    if not visits:
+        flash('No device found with that fingerprint.', 'error')
+        return redirect(url_for('dashboard.dashboard_home'))
+    
+    # Aggregate data
+    emails = list(set([v.email for v in visits if v.email]))
+    ips = list(set([v.ip_address for v in visits if v.ip_address]))
+    links_visited = list(set([v.link.slug for v in visits]))
+    countries = list(set([v.country for v in visits if v.country]))
+    devices = list(set([f"{v.os_family} / {v.device_type}" for v in visits]))
+    
+    # Best identity guess
+    primary_email = emails[0] if emails else None
+    ai_summary = next((v.ai_summary for v in visits if v.ai_summary), None)
+    webgl = next((v.webgl_renderer for v in visits if v.webgl_renderer), None)
+    
+    return render_template('device_profile.html',
+                          fingerprint=fingerprint,
+                          visits=visits[:50],
+                          emails=emails,
+                          ips=ips,
+                          links_visited=links_visited,
+                          countries=countries,
+                          devices=devices,
+                          primary_email=primary_email,
+                          ai_summary=ai_summary,
+                          webgl=webgl,
+                          total_visits=len(visits))
+
+# ============================================
+# V30: EXPORT FUNCTIONALITY
+# ============================================
+
+@bp.route('/export/<slug>/json')
+@login_required
+def export_json(slug):
+    """Export link stats as JSON."""
+    link = Link.query.filter_by(slug=slug).first_or_404()
+    visits = Visit.query.filter_by(link_id=link.id).order_by(Visit.timestamp.desc()).all()
+    
+    data = {
+        'link': {
+            'slug': link.slug,
+            'destination': link.destination,
+            'created_at': link.created_at.isoformat(),
+            'total_visits': len(visits)
+        },
+        'visits': []
+    }
+    
+    for v in visits:
+        data['visits'].append({
+            'id': v.id,
+            'timestamp': v.timestamp.isoformat(),
+            'ip_address': v.ip_address,
+            'hostname': v.hostname,
+            'isp': v.isp,
+            'org': v.org,
+            'city': v.city,
+            'country': v.country,
+            'lat': v.lat,
+            'lon': v.lon,
+            'os_family': v.os_family,
+            'device_type': v.device_type,
+            'user_agent': v.user_agent,
+            'referrer': v.referrer,
+            'email': v.email,
+            'canvas_hash': v.canvas_hash,
+            'etag': v.etag,
+            'webgl_renderer': v.webgl_renderer,
+            'ai_summary': v.ai_summary,
+            'cpu_cores': v.cpu_cores,
+            'ram_gb': v.ram_gb,
+            'is_suspicious': v.is_suspicious
+        })
+    
+    response = make_response(json.dumps(data, indent=2))
+    response.headers['Content-Type'] = 'application/json'
+    response.headers['Content-Disposition'] = f'attachment; filename={slug}_export.json'
+    return response
+
+@bp.route('/export/<slug>/csv')
+@login_required
+def export_csv(slug):
+    """Export link stats as CSV (Google Sheets compatible)."""
+    import csv
+    from io import StringIO
+    
+    link = Link.query.filter_by(slug=slug).first_or_404()
+    visits = Visit.query.filter_by(link_id=link.id).order_by(Visit.timestamp.desc()).all()
+    
+    si = StringIO()
+    cw = csv.writer(si)
+    
+    # Header
+    cw.writerow([
+        'ID', 'Timestamp', 'IP', 'Hostname', 'ISP', 'Org', 'City', 'Country',
+        'Lat', 'Lon', 'OS', 'Device', 'Email', 'Canvas Hash', 'ETag',
+        'WebGL', 'AI Summary', 'CPU Cores', 'RAM GB', 'Suspicious', 'Referrer'
+    ])
+    
+    for v in visits:
+        cw.writerow([
+            v.id, v.timestamp, v.ip_address, v.hostname or '', v.isp or '', v.org or '',
+            v.city or '', v.country or '', v.lat or '', v.lon or '',
+            v.os_family or '', v.device_type or '', v.email or '',
+            v.canvas_hash or '', v.etag or '', v.webgl_renderer or '',
+            v.ai_summary or '', v.cpu_cores or '', v.ram_gb or '',
+            'Yes' if v.is_suspicious else 'No', v.referrer or ''
+        ])
+    
+    output = make_response(si.getvalue())
+    output.headers['Content-Disposition'] = f'attachment; filename={slug}_export.csv'
+    output.headers['Content-Type'] = 'text/csv'
+    return output
+
+@bp.route('/export/<slug>/pdf')
+@login_required
+def export_pdf(slug):
+    """Export link stats as PDF (HTML-based, print-ready)."""
+    link = Link.query.filter_by(slug=slug).first_or_404()
+    visits = Visit.query.filter_by(link_id=link.id).order_by(Visit.timestamp.desc()).limit(50).all()
+    
+    # Generate HTML report
+    html = f'''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Report: /{slug}</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; padding: 20px; }}
+            h1 {{ color: #333; }}
+            table {{ width: 100%; border-collapse: collapse; margin-top: 20px; }}
+            th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 11px; }}
+            th {{ background: #333; color: white; }}
+            tr:nth-child(even) {{ background: #f9f9f9; }}
+            .meta {{ color: #666; margin-bottom: 20px; }}
+        </style>
+    </head>
+    <body>
+        <h1>Intelligence Report: /{slug}</h1>
+        <div class="meta">
+            <p>Destination: {link.destination}</p>
+            <p>Total Visits: {len(visits)}</p>
+            <p>Generated: {__import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>IP / Hostname</th>
+                    <th>Location</th>
+                    <th>Device</th>
+                    <th>Identity</th>
+                </tr>
+            </thead>
+            <tbody>
+    '''
+    
+    for v in visits:
+        identity = v.email or v.ai_summary or '-'
+        html += f'''
+            <tr>
+                <td>{v.timestamp.strftime('%Y-%m-%d %H:%M')}</td>
+                <td>{v.ip_address}<br><small>{v.hostname or v.org or ''}</small></td>
+                <td>{v.city or ''}, {v.country or ''}</td>
+                <td>{v.os_family or ''} / {v.device_type or ''}</td>
+                <td>{identity}</td>
+            </tr>
+        '''
+    
+    html += '''
+            </tbody>
+        </table>
+        <p style="margin-top:20px; font-size:10px; color:#999;">
+            Generated by ulrTrack Intelligence Platform
+        </p>
+    </body>
+    </html>
+    '''
+    
+    response = make_response(html)
+    response.headers['Content-Type'] = 'text/html'
+    response.headers['Content-Disposition'] = f'attachment; filename={slug}_report.html'
+    return response
+

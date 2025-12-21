@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2><i class="fas fa-fingerprint"></i> Device Profile</h2>
+    <a href="/dashboard" class="btn-outline">Back</a>
+</div>
+
+<!-- Device Summary Card -->
+<div class="card" style="margin-bottom: 20px;">
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+        <!-- Identity -->
+        <div>
+            <div style="color: var(--text-sec); font-size: 0.8rem; margin-bottom: 5px;">PRIMARY IDENTITY</div>
+            {% if primary_email %}
+            <div style="font-size: 1.1rem; color: var(--accent); font-weight: 600;">{{ primary_email }}</div>
+            {% else %}
+            <div style="color: #888; font-style: italic;">Anonymous</div>
+            {% endif %}
+        </div>
+
+        <!-- Total Activity -->
+        <div>
+            <div style="color: var(--text-sec); font-size: 0.8rem; margin-bottom: 5px;">TOTAL VISITS</div>
+            <div style="font-size: 1.5rem; font-weight: 700;">{{ total_visits }}</div>
+        </div>
+
+        <!-- Links Visited -->
+        <div>
+            <div style="color: var(--text-sec); font-size: 0.8rem; margin-bottom: 5px;">LINKS VISITED</div>
+            <div style="font-size: 1.5rem; font-weight: 700;">{{ links_visited|length }}</div>
+        </div>
+
+        <!-- Unique IPs -->
+        <div>
+            <div style="color: var(--text-sec); font-size: 0.8rem; margin-bottom: 5px;">UNIQUE IPs</div>
+            <div style="font-size: 1.5rem; font-weight: 700;">{{ ips|length }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Device Info -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+    <div class="card">
+        <h3><i class="fas fa-microchip"></i> Hardware Signature</h3>
+        <div class="mono" style="font-size: 0.9rem; margin-bottom: 10px; color: var(--accent);">
+            Fingerprint: {{ fingerprint }}
+        </div>
+        {% if ai_summary %}
+        <div style="margin-bottom: 10px;">
+            <span style="color: var(--text-sec);">AI Analysis:</span>
+            <span style="font-weight: 600;">{{ ai_summary }}</span>
+        </div>
+        {% endif %}
+        {% if webgl %}
+        <div style="font-size: 0.85rem; color: #888;">
+            <i class="fas fa-cube"></i> {{ webgl }}
+        </div>
+        {% endif %}
+        <div style="margin-top: 10px;">
+            {% for dev in devices %}
+            <span class="badge badge-gray">{{ dev }}</span>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card">
+        <h3><i class="fas fa-globe"></i> Geographic Footprint</h3>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            {% for country in countries %}
+            <span class="badge badge-green">{{ country }}</span>
+            {% endfor %}
+        </div>
+        <div style="margin-top: 15px;">
+            <span style="color: var(--text-sec); font-size: 0.8rem;">Known IPs:</span>
+            <div style="font-size: 0.85rem; margin-top: 5px;">
+                {% for ip in ips[:5] %}
+                <span class="mono" style="color: #888;">{{ ip }}</span>{% if not loop.last %}, {% endif %}
+                {% endfor %}
+                {% if ips|length > 5 %}<span style="color:#666;"> +{{ ips|length - 5 }} more</span>{% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Activity Log -->
+<div class="card">
+    <h3><i class="fas fa-history"></i> Activity Timeline (Last 50)</h3>
+    <table style="font-size: 0.85rem;">
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>Link</th>
+                <th>IP / Location</th>
+                <th>Email</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for v in visits %}
+            <tr>
+                <td class="mono" style="color: var(--text-sec);">{{ v.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>
+                    <a href="/dashboard/stats/{{ v.link.slug }}" class="text-accent">/{{ v.link.slug }}</a>
+                </td>
+                <td>
+                    <span class="mono">{{ v.ip_address }}</span>
+                    <span style="color: #888; font-size: 0.8rem;"> - {{ v.city }}, {{ v.country }}</span>
+                </td>
+                <td>
+                    {% if v.email %}
+                    <span style="color: var(--accent);">{{ v.email }}</span>
+                    {% else %}
+                    <span style="color: #666; font-style: italic;">-</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
