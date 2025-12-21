@@ -94,13 +94,10 @@ def email_permutations(email):
     
     local_part, domain = email.split('@')
     
-    # Common first names for permutation
-    FIRST_NAMES = ['mario', 'marco', 'luca', 'alessandro', 'andrea', 'francesco', 'giovanni', 
-                   'giuseppe', 'matteo', 'davide', 'john', 'james', 'michael', 'david', 'robert']
-    
-    # Parse local part
-    # Pattern: m.rossi, mario.rossi, mrossi, mario_rossi
-    local_clean = local_part.lower().replace('_', '.').replace('-', '.')
+    # Remove trailing numbers (e.g. gobberpaolo92 -> gobberpaolo)
+    import re
+    local_clean = re.sub(r'\d+$', '', local_part.lower())
+    local_clean = local_clean.replace('_', '.').replace('-', '.')
     parts = local_clean.split('.')
     
     first_names = []
@@ -108,25 +105,23 @@ def email_permutations(email):
     full_names = []
     
     if len(parts) >= 2:
-        # mario.rossi pattern
+        # mario.rossi pattern - most reliable
         first_names.append(parts[0].capitalize())
         last_names.append(parts[-1].capitalize())
         full_names.append(f"{parts[0].capitalize()} {parts[-1].capitalize()}")
-    elif len(parts) == 1:
-        # mrossi pattern - first letter might be initial
-        if len(parts[0]) > 2:
-            initial = parts[0][0].upper()
-            rest = parts[0][1:].capitalize()
-            last_names.append(rest)
-            # Generate possible first names starting with that initial
-            for fn in FIRST_NAMES:
-                if fn.startswith(initial.lower()):
-                    full_names.append(f"{fn.capitalize()} {rest}")
-                    first_names.append(fn.capitalize())
+    elif len(parts) == 1 and len(parts[0]) > 3:
+        # Single word like "gobberpaolo" - try to split intelligently
+        word = parts[0]
+        
+        # Try common name patterns (first 4-7 chars might be first name)
+        # We'll just store the raw username, let AI figure it out
+        full_names.append(word.capitalize())
+        
+        # Don't make wild guesses - let AI handle ambiguous cases
     
     # Extract company from domain
     company = None
-    if domain and not any(x in domain for x in ['gmail', 'yahoo', 'hotmail', 'outlook', 'icloud', 'proton']):
+    if domain and not any(x in domain for x in ['gmail', 'yahoo', 'hotmail', 'outlook', 'icloud', 'proton', 'live', 'aol']):
         company = domain.split('.')[0].capitalize()
     
     return {

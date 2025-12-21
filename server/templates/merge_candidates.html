@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2><i class="fas fa-code-branch"></i> Identity Merge</h2>
+    <a href="/dashboard/contacts" class="btn-outline btn-sm">Back to Contacts</a>
+</div>
+
+<div class="card">
+    <p style="color: var(--text-sec); margin-bottom: 20px;">
+        These leads share the same device fingerprint (Canvas Hash), suggesting they may be the same person using
+        different emails.
+    </p>
+
+    {% if candidates %}
+    {% for group in candidates %}
+    <div
+        style="border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 15px; margin-bottom: 20px; background: rgba(0,0,0,0.2);">
+        <div style="font-size: 0.75rem; color: var(--text-sec); margin-bottom: 10px;">
+            <i class="fas fa-fingerprint"></i> Canvas Hash: <span class="mono">{{ group.canvas_hash }}...</span>
+        </div>
+
+        <form action="/dashboard/merge_leads" method="POST">
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px;">
+                {% for lead in group.leads %}
+                <div
+                    style="border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 12px; background: rgba(0,255,157,0.05);">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                        <input type="radio" name="primary_id" value="{{ lead.id }}" required style="width: auto;">
+                        <img src="https://www.gravatar.com/avatar/{{ lead.email | md5 }}?d=mp&s=40"
+                            style="border-radius: 50%; width: 40px; height: 40px;">
+                        <div>
+                            <div style="font-weight: 600;">{{ lead.email }}</div>
+                            {% if lead.name %}
+                            <div style="font-size: 0.8rem; color: var(--accent);">{{ lead.name }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem;">
+                        <input type="checkbox" name="secondary_ids" value="{{ lead.id }}" style="width: auto;">
+                        <span style="color: var(--text-sec);">Merge into primary</span>
+                    </div>
+
+                    {% if lead.tags %}
+                    <div style="margin-top: 8px;">
+                        {% for tag in lead.tags.split(',') %}
+                        <span class="badge badge-gray" style="font-size: 0.7rem;">{{ tag.strip() }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+
+            <div style="margin-top: 15px; text-align: right;">
+                <button type="submit" class="btn btn-sm"><i class="fas fa-compress-arrows-alt"></i> Merge
+                    Selected</button>
+            </div>
+        </form>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div style="text-align: center; padding: 40px; color: var(--text-sec);">
+        <i class="fas fa-check-circle" style="font-size: 3rem; color: var(--accent); margin-bottom: 15px;"></i>
+        <div>No duplicate identities detected.</div>
+        <div style="font-size: 0.85rem; margin-top: 5px;">All leads appear to be unique based on device fingerprints.
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="card" style="margin-top: 20px;">
+    <h4><i class="fas fa-info-circle"></i> How It Works</h4>
+    <ul style="color: var(--text-sec); font-size: 0.9rem; margin-left: 20px;">
+        <li><strong>Primary Lead</strong>: Select one lead as the main identity (radio button)</li>
+        <li><strong>Secondary Leads</strong>: Check which leads to merge into the primary (checkboxes)</li>
+        <li>All visits from secondary leads will be transferred to the primary</li>
+        <li>Tags, OSINT data, and AI analysis will be combined</li>
+        <li>Secondary leads will be deleted after merge</li>
+    </ul>
+</div>
+{% endblock %}

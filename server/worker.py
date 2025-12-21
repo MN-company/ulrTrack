@@ -84,6 +84,36 @@ def start_worker(app):
                             if lead:
                                 lead.scan_status = 'failed'
                                 db.session.commit()
+                        
+                        # V34: Blackbird Username Search (if email has username pattern)
+                        try:
+                            local_part = email.split('@')[0]
+                            # Only run if local part looks like a username (no dots/numbers only)
+                            import re
+                            if re.match(r'^[a-zA-Z][a-zA-Z0-9_]{3,}$', local_part):
+                                blackbird_cmd = 'blackbird'
+                                # Try to find blackbird
+                                for p in ['/usr/local/bin/blackbird', '/home/mncompany/.local/bin/blackbird']:
+                                    if os.path.exists(p):
+                                        blackbird_cmd = p
+                                        break
+                                
+                                print(f"ASYNC OSINT: Running Blackbird for username {local_part}")
+                                import subprocess
+                                result = subprocess.run([blackbird_cmd, '-u', local_part, '--json'], 
+                                                       capture_output=True, text=True, timeout=120)
+                                
+                                if result.stdout:
+                                    lead = Lead.query.filter_by(email=email).first()
+                                    if lead:
+                                        import json as json_lib
+                                        cf = json_lib.loads(lead.custom_fields or '{}')
+                                        cf['blackbird'] = result.stdout[:2000]  # Limit size
+                                        lead.custom_fields = json_lib.dumps(cf)
+                                        db.session.commit()
+                                        print(f"ASYNC OSINT: Blackbird completed for {local_part}")
+                        except Exception as e:
+                            print(f"Blackbird Error: {e}")
                     
                     elif task['type'] == 'ai_analyze':
                         v_id = task['visit_id']
@@ -152,14 +182,22 @@ Be concise, one line per item."""
                                 
                                 # Store result in custom_fields
                                 import json as json_lib
+                                ai_result = response.text.strip()
                                 cf = json_lib.loads(lead.custom_fields or '{}')
-                                cf['ai_identity'] = response.text.strip()
+                                cf['ai_identity'] = ai_result
                                 cf['gaia_id'] = gaia
                                 if gravatar:
                                     cf['gravatar'] = gravatar
                                 lead.custom_fields = json_lib.dumps(cf)
+                                
+                                # Try to extract name from AI response and save to lead.name
+                                import re
+                                name_match = re.search(r'(?:FULL NAME|Name)[:\s]*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)', ai_result)
+                                if name_match and not lead.name:
+                                    lead.name = name_match.group(1)
+                                
                                 db.session.commit()
-                                print(f"AI IDENTITY INFERENCE: {response.text[:100]}...")
+                                print(f"AI IDENTITY INFERENCE: {ai_result[:100]}...")
                                 
                             except Exception as e:
                                 print(f"Identity Inference Error: {e}")

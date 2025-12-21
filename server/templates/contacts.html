@@ -3,9 +3,12 @@
 {% block content %}
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
     <h2><i class="fas fa-address-book"></i> Contacts / Leads</h2>
-    <div class="flex-row">
-        <a href="/dashboard/contacts/export_csv" class="btn-outline"><i class="fas fa-file-csv"></i> EXPORT CSV</a>
-        <a href="/dashboard" class="btn-outline">Back to Dashboard</a>
+    <div class="flex-row" style="gap: 10px;">
+        <a href="/dashboard/merge_candidates" class="btn-outline btn-sm"><i class="fas fa-code-branch"></i> Merge
+            Identities</a>
+        <a href="/dashboard/contacts/export_csv" class="btn-outline btn-sm"><i class="fas fa-file-csv"></i> Export
+            CSV</a>
+        <a href="/dashboard" class="btn-outline btn-sm">Back</a>
     </div>
 </div>
 

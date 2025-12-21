@@ -55,18 +55,18 @@
                 <i class="fas fa-microchip"
                     style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-sec);"></i>
                 <select name="gemini_model" style="padding-left: 36px; appearance:none;">
-                    <option value="gemini-2.0-flash-exp" {% if gemini_model=='gemini-2.0-flash-exp' %}selected{% endif
-                        %}>
-                        ⚡ Gemini 2.0 Flash (Experimental) - SOTA Speed
+                    <option value="gemini-2.0-flash" {% if gemini_model=='gemini-2.0-flash' %}selected{% endif %}>
+                        ⚡ Gemini 2.0 Flash - Latest & Fastest
+                    </option>
+                    <option value="gemini-2.0-flash-thinking-exp" {% if gemini_model=='gemini-2.0-flash-thinking-exp'
+                        %}selected{% endif %}>
+                        🧠 Gemini 2.0 Flash Thinking - Best Reasoning
                     </option>
                     <option value="gemini-1.5-pro" {% if gemini_model=='gemini-1.5-pro' %}selected{% endif %}>
-                        🧠 Gemini 1.5 Pro - Best Reasoning
+                        📊 Gemini 1.5 Pro - Long Context
                     </option>
                     <option value="gemini-1.5-flash" {% if gemini_model=='gemini-1.5-flash' %}selected{% endif %}>
                         🚀 Gemini 1.5 Flash - Balanced
-                    </option>
-                    <option value="gemini-1.5-flash-8b" {% if gemini_model=='gemini-1.5-flash-8b' %}selected{% endif %}>
-                        🏎️ Gemini 1.5 Flash-8B - Nano Fast
                     </option>
                 </select>
             </div>

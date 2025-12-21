@@ -99,7 +99,6 @@
         style="margin-top: 10px; font-size: 0.8rem; color: var(--text-sec); display: flex; justify-content: space-between;">
         <span><i class="fas fa-info-circle"></i> Quick Mode uses default settings.</span>
         <a href="/dashboard/create_full" class="btn-outline btn-sm"><i class="fas fa-cog"></i> Advanced Creator</a>
-        <a href="/dashboard/create_full" class="text-accent" style="font-weight: 600;">USE ADVANCED CREATOR &rarr;</a>
     </div>
 </div>
 
@@ -160,7 +159,7 @@
                                 class="fas fa-qrcode"></i></a>
                         <a href="/dashboard/stats/{{ link.slug }}" class="btn-outline btn-sm"><i
                                 class="fas fa-chart-line"></i></a>
-                        <a href="/dashboard/edit/{{ link.id }}" class="btn-outline btn-sm"><i
+                        <a href="/dashboard/edit/{{ link.slug }}" class="btn-outline btn-sm"><i
                                 class="fas fa-edit"></i></a>
 
                         <form method="POST" action="/dashboard/delete/{{ link.id }}"

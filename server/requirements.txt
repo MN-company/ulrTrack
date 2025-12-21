@@ -12,3 +12,4 @@ Pillow
 orjson
 google-genai
 holehe
+blackbird-osint

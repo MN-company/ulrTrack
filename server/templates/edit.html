@@ -138,50 +138,66 @@
                 <input type="text" name="allowed_countries" value="{{ link.allowed_countries or '' }}">
             </div>
 
-            <div class="form-group" style="margin-top: 20px;">
-                <label>Safe URL (Cloaking)</label>
-                <input type="url" name="safe_url" value="{{ link.safe_url or '' }}">
-            </div>
+            <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:15px 0;">
 
-            <div class="form-group">
-                <label>Password (Leave empty to keep, *** to see it's set)</label>
-                <input type="text" name="password" placeholder="{{ '***' if link.password_hash else '' }}">
+            <div class="toggle-row">
+                <label>Enable Captcha (Turnstile)</label>
+                <input type="checkbox" name="enable_captcha" value="true" {% if link.enable_captcha %}checked{% endif %}
+                    style="width:auto;">
             </div>
+            <div class="toggle-row">
+                <label>Require Valid Email (Email Gate)</label>
+                <input type="checkbox" name="require_email" value="true" {% if link.require_email %}checked{% endif %}
+                    style="width:auto;">
+            </div>
+            <div class="form-group" style="margin-top: 10px;">
+                <label>Email Policy</label>
+                <select name="email_policy">
+                    <option value="all" {% if link.email_policy=='all' %}selected{% endif %}>Allow All Emails</option>
+                    <option value="certified" {% if link.email_policy=='certified' %}selected{% endif %}>Certified Only
+                        (Block Temp)</option>
+                    <option value="trackable" {% if link.email_policy=='trackable' %}selected{% endif %}>Trackable Only
+                        (Corp/ISP)</option>
+                </select>
+            </div>
+            <label>Password (Leave empty to keep, *** to see it's set)</label>
+            <input type="text" name="password" placeholder="{{ '***' if link.password_hash else '' }}">
         </div>
+</div>
 
-        <div id="scheduling" class="tab-content">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                <div class="form-group">
-                    <label>Start Active Hour</label>
-                    <input type="number" name="schedule_start_hour" min="0" max="23"
-                        value="{{ link.schedule_start_hour if link.schedule_start_hour is not none else '' }}">
-                </div>
-                <div class="form-group">
-                    <label>End Active Hour</label>
-                    <input type="number" name="schedule_end_hour" min="0" max="23"
-                        value="{{ link.schedule_end_hour if link.schedule_end_hour is not none else '' }}">
-                </div>
-            </div>
-            <div class="form-group">
-                <label>Timezone</label>
-                <input type="text" name="schedule_timezone" value="{{ link.schedule_timezone or 'UTC' }}">
-            </div>
+<div id="scheduling" class="tab-content">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div class="form-group">
+            <label>Start Active Hour</label>
+            <input type="number" name="schedule_start_hour" min="0" max="23"
+                value="{{ link.schedule_start_hour if link.schedule_start_hour is not none else '' }}">
         </div>
+        <div class="form-group">
+            <label>End Active Hour</label>
+            <input type="number" name="schedule_end_hour" min="0" max="23"
+                value="{{ link.schedule_end_hour if link.schedule_end_hour is not none else '' }}">
+        </div>
+    </div>
+    <div class="form-group">
+        <label>Timezone</label>
+        <input type="text" name="schedule_timezone" value="{{ link.schedule_timezone or 'UTC' }}">
+    </div>
+</div>
 
-        <div id="limits" class="tab-content">
-            <div class="form-group">
-                <label>Max Clicks (0 = Unlimited)</label>
-                <input type="number" name="max_clicks" value="{{ link.max_clicks or 0 }}">
-            </div>
-            <div class="form-group">
-                <label>Expiration (Minutes)</label>
-                <input type="number" name="expiration_minutes" value="{{ link.expiration_minutes or 0 }}">
-            </div>
-        </div>
+<div id="limits" class="tab-content">
+    <div class="form-group">
+        <label>Max Clicks (0 = Unlimited)</label>
+        <input type="number" name="max_clicks" value="{{ link.max_clicks or 0 }}">
+    </div>
+    <div class="form-group">
+        <label>Expiration (Minutes)</label>
+        <input type="number" name="expiration_minutes" value="{{ link.expiration_minutes or 0 }}">
+    </div>
+</div>
 
-        <div style="margin-top: 30px; border-top: var(--border); padding-top: 20px; text-align: right;">
-            <button type="submit" class="btn">SAVE CHANGES</button>
-        </div>
-    </form>
+<div style="margin-top: 30px; border-top: var(--border); padding-top: 20px; text-align: right;">
+    <button type="submit" class="btn">SAVE CHANGES</button>
+</div>
+</form>
 </div>
 {% endblock %}
