@@ -11,7 +11,6 @@ def is_bot_ua(ua_string):
         'expand', 'preview', 'peeker', 'twitter', 'discord', 'slack', 'go-http-client', 'python-requests',
         'headless', 'phantomjs', 'puppeteer', 'selenium', 'urlscan', 'lighthouse', 'gtmetrix', 'pingdom'
     ]
-    ]
     ua_lower = ua_string.lower()
     return any(bot in ua_lower for bot in bots)
 
