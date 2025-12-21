@@ -181,26 +181,24 @@ def start_worker(app):
                                 from google import genai
                                 client = genai.Client(api_key=Config.GEMINI_API_KEY)
                                 
-                                prompt = f"""You are an OSINT analyst. Based on these data points, infer the most likely identity.
+                                prompt = f"""Agisci come un esperto analista di intelligence. Incrocia questi dati disparati per l'obiettivo: {email}
+Dati disponibili:
+- Nomi Possibili: {perm['full_names']}
+- Azienda Derivata: {perm['company']}
+- Gravatar: {gravatar}
+- GaiaID: {gaia or 'N/A'}
+- Hostnames Recenti: {hostnames[:10]}
+- Organizzazioni ISP: {orgs[:10]}
+- Città/Nazioni: {cities[:10]}
+- Dispositivi: {devices}
 
-EMAIL: {email}
-POSSIBLE NAMES: {perm['full_names']}
-COMPANY: {perm['company']}
-GRAVATAR NAME: {gravatar.get('displayName') if gravatar else 'None'}
-GRAVATAR ACCOUNTS: {gravatar.get('accounts') if gravatar else 'None'}
-GAIA ID: {gaia or 'Not found'}
-HOSTNAMES SEEN: {hostnames[:5]}
-ORGANIZATIONS: {orgs[:5]}
-CITIES: {cities[:5]}
-DEVICES: {devices[:3]}
+Istruzioni:
+1. Crea un CORE PROFILE del target, eliminando incongruenze e falsi positivi.
+2. Se trovi una coincidenza tra la località dell'IP e una bio social o una recensione Maps, evidenziala come 'STRONG LINK'.
+3. Genera un profilo unico: Nome, Ruolo, Azienda, Livello di Rischio.
+4. Suggerisci 3 Google Dorks mirate per trovare file esposti (PDF, Docx) su questo target.
 
-Based on this, provide:
-1. Most likely FULL NAME
-2. Probable ROLE/JOB
-3. LinkedIn search query
-4. Confidence level (Low/Medium/High)
-
-Be concise, one line per item."""
+Rispondi in formato testo pulito e conciso."""
 
                                 response = client.models.generate_content(model=Config.GEMINI_MODEL, contents=prompt)
                                 

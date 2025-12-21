@@ -148,6 +148,38 @@
             {% endif %}
         </div>
 
+        {% if blackbird_data %}
+        <div class="card"
+            style="margin-top:15px; border: 1px solid rgba(114, 137, 218, 0.3); background: rgba(0,0,0,0.2);">
+            <h5 style="color: #7289da; margin-bottom: 10px;"><i class="fab fa-discord"></i> Username Recon</h5>
+            <div style="max-height: 150px; overflow-y: auto; font-size: 0.8rem; white-space: pre-wrap; color: #ccc;">{{
+                blackbird_data }}</div>
+        </div>
+        {% endif %}
+
+        <!-- Cloud Dorker -->
+        <div style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+            <h5 style="color: var(--text);"><i class="fas fa-search"></i> Cloud Dorker</h5>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;">
+                <a href="https://www.google.com/search?q=site:s3.amazonaws.com+OR+site:blob.core.windows.net+{{ lead.email | urlencode }}"
+                    target="_blank" class="badge badge-gray" style="text-decoration: none; cursor: pointer;">
+                    <i class="fab fa-aws"></i> Buckets
+                </a>
+                <a href="https://www.google.com/search?q=site:docs.google.com+OR+site:drive.google.com+{{ lead.email | urlencode }}"
+                    target="_blank" class="badge badge-gray" style="text-decoration: none; cursor: pointer;">
+                    <i class="fab fa-google-drive"></i> Docs
+                </a>
+                <a href="https://www.google.com/search?q=site:pastebin.com+OR+site:ghostbin.com+{{ lead.email | urlencode }}"
+                    target="_blank" class="badge badge-gray" style="text-decoration: none; cursor: pointer;">
+                    <i class="fas fa-paste"></i> Pastebin
+                </a>
+                <a href="https://www.google.com/search?q=site:trello.com+OR+site:atlassian.net+{{ lead.email | urlencode }}"
+                    target="_blank" class="badge badge-gray" style="text-decoration: none; cursor: pointer;">
+                    <i class="fab fa-trello"></i> PM Tools
+                </a>
+            </div>
+        </div>
+
         <form action="/dashboard/analyze_email" method="POST" style="margin-top:15px;">
             <input type="hidden" name="email" value="{{ lead.email }}">
             {% if lead.scan_status == 'pending' %}

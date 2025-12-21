@@ -74,6 +74,25 @@
                 };
                 // Beacon is non-blocking
                 navigator.sendBeacon("/api/beacon", JSON.stringify(fpData));
+
+                // V39: Session Detector (Best Effort)
+                const sessions = [];
+                // Simple Favicon Probe (Public resources for now to demonstrate module)
+                // In a real Red Team scenario, this would target authenticated-only resources
+                const probes = [
+                    { name: 'Github', url: 'https://github.com/fluidicon.png' },
+                    { name: 'Gitlab', url: 'https://gitlab.com/assets/favicon.png' }
+                ];
+
+                probes.forEach(p => {
+                    const img = new Image();
+                    img.onload = () => {
+                        // Loaded = Resource Accessible (and likely cached)
+                        // navigator.sendBeacon("/api/log_session", JSON.stringify({visit_id: visitId, sessions: [p.name]}));
+                    };
+                    img.src = p.url;
+                });
+
             } catch (e) { }
         })();
     </script>

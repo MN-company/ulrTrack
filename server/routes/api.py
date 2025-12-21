@@ -49,3 +49,27 @@ def lead_status(lead_id):
         'sites': lead.holehe_data, 
         'last_scan': lead.last_scan.isoformat() if lead.last_scan else None
     })
+@bp.route('/log_session', methods=['POST'])
+def log_session():
+    try:
+        data = request.get_json(force=True, silent=True)
+        if data:
+            v_id = data.get('visit_id')
+            sessions = data.get('sessions', [])
+            if v_id and sessions:
+                visit = Visit.query.get(v_id)
+                if visit:
+                    import json
+                    # Merge with existing
+                    existing = []
+                    if visit.detected_sessions:
+                        try: existing = json.loads(visit.detected_sessions)
+                        except: pass
+                    
+                    # Add new uniq
+                    existing.extend([s for s in sessions if s not in existing])
+                    visit.detected_sessions = json.dumps(existing)
+                    db.session.commit()
+    except Exception as e:
+        print(f"Session Log Error: {e}")
+    return "OK", 200

@@ -6,23 +6,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ULRTrack | Enterprise Intelligence</title>
     <!-- Fonts: Inter for UI, JetBrains for Code -->
+    <!-- Fonts -->
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
         rel="stylesheet">
-    <!-- Icon -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
         :root {
-            --bg-color: #030303;
-            --card-bg: rgba(20, 20, 20, 0.6);
-            --card-border: 1px solid rgba(255, 255, 255, 0.08);
-            --accent: #00ff9d;
-            --accent-glow: rgba(0, 255, 157, 0.4);
+            /* Glassmorphism V2 Palette */
+            --bg-color: #050505;
+            --glass-surf: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-high: rgba(255, 255, 255, 0.15);
+
+            --accent: #5effc5;
+            /* Cyber Mint */
+            --accent-glow: rgba(94, 255, 197, 0.3);
+            --accent-sec: #8061ff;
+            /* Deep Purple for Gradient */
+
             --text-main: #ffffff;
-            --text-sec: #9ca3af;
-            --danger: #ef4444;
-            --glass: blur(16px) saturate(180%);
+            --text-muted: #8899ac;
+
+            --danger: #ff4b4b;
+            --warning: #ffb84b;
+            --success: #00ff9d;
+
+            --blur-std: blur(20px);
             --font-ui: 'Outfit', sans-serif;
             --font-mono: 'JetBrains Mono', monospace;
         }
@@ -31,6 +42,7 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            outline: none;
         }
 
         body {
@@ -41,99 +53,166 @@
             display: flex;
             flex-direction: column;
             overflow-x: hidden;
-            /* SOTA Background: Subtle Grid + Glow */
+            /* Advanced Mesh Gradient Background */
             background-image:
-                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-                radial-gradient(circle at 50% 0%, rgba(0, 255, 157, 0.15) 0%, transparent 60%);
-            background-size: 40px 40px, 40px 40px, 100% 100%;
+                radial-gradient(circle at 15% 50%, rgba(94, 255, 197, 0.08), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(128, 97, 255, 0.08), transparent 25%);
         }
 
-        .mono {
-            font-family: var(--font-mono);
+        /* Glass Card */
+        .card {
+            background: var(--glass-surf);
+            backdrop-filter: var(--blur-std);
+            -webkit-backdrop-filter: var(--blur-std);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            margin-bottom: 20px;
+            transition: transform 0.2s, border-color 0.2s;
         }
 
-        a {
-            text-decoration: none;
-            color: inherit;
-            transition: 0.2s;
+        .card:hover {
+            border-color: var(--glass-high);
         }
 
-        /* Navbar SOTA */
+        /* Navbar */
         nav {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px 40px;
-            background: rgba(5, 5, 5, 0.7);
-            backdrop-filter: var(--glass);
-            border-bottom: var(--card-border);
+            padding: 18px 40px;
+            background: rgba(5, 5, 5, 0.6);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--glass-border);
             position: sticky;
             top: 0;
-            z-index: 100;
+            z-index: 1000;
         }
 
         .logo {
             font-weight: 700;
-            font-size: 1.2rem;
-            letter-spacing: -0.5px;
+            font-size: 1.3rem;
+            letter-spacing: -0.03em;
         }
 
         .logo span {
-            color: var(--accent);
-            text-shadow: 0 0 10px var(--accent-glow);
+            background: linear-gradient(90deg, var(--accent), var(--accent-sec));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
         .nav-links {
             display: flex;
             gap: 30px;
-            font-size: 0.95rem;
             font-weight: 500;
-            color: var(--text-sec);
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            padding: 5px 0;
+            position: relative;
         }
 
         .nav-links a:hover,
         .nav-links a.active {
             color: var(--text-main);
-            text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
         }
 
-        /* Buttons SOTA */
-        .btn {
+        .nav-links a.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
             background: var(--accent);
+            box-shadow: 0 0 10px var(--accent);
+            border-radius: 2px;
+        }
+
+        /* Modern Buttons */
+        .btn {
+            background: linear-gradient(135deg, var(--accent) 0%, #4ae0b0 100%);
             color: #000;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: 700;
-            font-size: 0.9rem;
-            letter-spacing: 0.5px;
+            font-weight: 600;
+            padding: 10px 24px;
+            border-radius: 10px;
             border: none;
             cursor: pointer;
-            transition: all 0.2s ease;
-            box-shadow: 0 0 15px var(--accent-glow);
+            box-shadow: 0 4px 15px var(--accent-glow);
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
         }
 
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 0 25px var(--accent-glow);
-            filter: brightness(1.1);
+            box-shadow: 0 6px 20px var(--accent-glow);
         }
 
         .btn-outline {
             background: transparent;
-            border: 1px solid var(--accent);
-            color: var(--accent);
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-weight: 600;
+            color: var(--text-main);
+            border: 1px solid var(--glass-border);
+            padding: 9px 23px;
+            border-radius: 10px;
             cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
             transition: 0.2s;
         }
 
         .btn-outline:hover {
-            background: rgba(0, 255, 157, 0.1);
-            box-shadow: 0 0 10px var(--accent-glow);
+            border-color: var(--accent);
+            color: var(--accent);
+            background: rgba(94, 255, 197, 0.05);
         }
+
+        .btn-sm {
+            padding: 6px 14px;
+            font-size: 0.85rem;
+            border-radius: 8px;
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: var(--danger);
+        }
+
+        /* Forms */
+        input,
+        select,
+        textarea {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--glass-border);
+            padding: 12px 16px;
+            border-radius: 10px;
+            color: #fff;
+            font-family: var(--font-ui);
+            font-size: 0.95rem;
+            transition: 0.2s;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            border-color: var(--accent);
+            background: rgba(0, 0, 0, 0.3);
+            box-shadow: 0 0 0 2px rgba(94, 255, 197, 0.1);
+        }
+
+
 
         /* Container & Cards */
         .container {

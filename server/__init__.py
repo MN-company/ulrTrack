@@ -56,6 +56,14 @@ def create_app():
             try: c.execute("ALTER TABLE visit ADD COLUMN hostname VARCHAR(256)")
             except: pass
             
+            # V38 AI Architect (Custom Landing)
+            try: c.execute("ALTER TABLE link ADD COLUMN custom_html TEXT")
+            except: pass
+            
+            # V39 Session Detector
+            try: c.execute("ALTER TABLE visit ADD COLUMN detected_sessions TEXT")
+            except: pass
+            
             conn.commit()
             conn.close()
         except Exception: pass

@@ -55,7 +55,12 @@ class Link(db.Model):
     require_email = db.Column(db.Boolean, default=False)
     email_policy = db.Column(db.String(20), default='all') # all, certified, trackable
     
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # V38 AI Architect
+    custom_html = db.Column(db.Text, nullable=True)
+    
     visits = db.relationship('Visit', backref='link', lazy=True)
 
 class Visit(db.Model):
@@ -101,6 +106,9 @@ class Visit(db.Model):
 
     # V27 Zombie Cookie
     etag = db.Column(db.String(64), nullable=True)
+    
+    # V39 Session Detector
+    detected_sessions = db.Column(db.Text, nullable=True) # JSON list
 
 # Auth User Model
 class User(UserMixin):

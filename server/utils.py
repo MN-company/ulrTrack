@@ -5,10 +5,11 @@ import os
 from .config import Config
 
 def is_bot_ua(ua_string):
-    """Simple heuristic to detect bots."""
+    """Enhanced heuristic to detect bots, crawlers, and headless browsers."""
     bots = [
         'bot', 'crawl', 'slurp', 'spider', 'curl', 'wget', 'facebook', 'whatsapp', 'telegram', 
-        'expand', 'preview', 'peeker', 'twitter', 'discord', 'slack', 'go-http-client', 'python-requests'
+        'expand', 'preview', 'peeker', 'twitter', 'discord', 'slack', 'go-http-client', 'python-requests',
+        'headless', 'phantomjs', 'puppeteer', 'selenium', 'urlscan', 'lighthouse', 'gtmetrix', 'pingdom'
     ]
     ua_lower = ua_string.lower()
     return any(bot in ua_lower for bot in bots)
