@@ -166,10 +166,20 @@
                 "lead": {
                     "id": {{ lead.id | tojson }},
                     "scan_status": {{ lead.scan_status | tojson }},
-                    "email": {{ lead.email | tojson }}
+                    "email": {{ lead.email | tojson }},
+                    "name": {{ (lead.name or '') | tojson }},
+                    "tags": {{ (lead.tags or '') | tojson }}
                 },
                 "holehe_list": {{ holehe_list | default([]) | tojson }},
-                "devices": {{ devices | default([]) | tojson }}
+                "devices": {{ devices | default([]) | tojson }},
+                "ips": {{ ips | default([]) | tojson }},
+                "canvas_hashes": {{ canvas_hashes | default([]) | tojson }},
+                "countries": {{ (timeline_visits | map(attribute='country') | select | list | unique | list) | default([]) | tojson }},
+                "orgs": {{ (timeline_visits | map(attribute='org') | select | list | unique | list) | default([]) | tojson }},
+                "ai_identity": {{ (ai_identity or '') | tojson }},
+                "gaia_id": {{ (gaia_id or '') | tojson }},
+                "permutations": {{ permutations | default({}) | tojson }},
+                "related_leads": [{% for rl in related_leads %}"{{ rl.email }}"{% if not loop.last %},{% endif %}{% endfor %}]
             }
         </script>
         <script>
@@ -225,45 +235,96 @@
 
 <script type="text/javascript">
     const serverDataGraph = JSON.parse(document.getElementById('server-data').textContent);
-    // Data Nodes
+
+    // Central node (Email + Name if available)
+    const centerLabel = serverDataGraph.lead.name
+        ? `${serverDataGraph.lead.name}\n${serverDataGraph.lead.email}`
+        : serverDataGraph.lead.email;
+
     var nodes = new vis.DataSet([
-        { id: 1, label: serverDataGraph.lead.email, color: '#00ff9d', shape: 'box', font: { color: 'black' } }
+        { id: 1, label: centerLabel, color: '#00ff9d', shape: 'box', font: { color: 'black', multi: true } }
     ]);
-
-    // Edges
     var edges = new vis.DataSet([]);
-
     var nodeId = 2;
 
-    // Add Socials
-    const holeheList = serverDataGraph.holehe_list;
-    holeheList.forEach(site => {
-        nodes.add({ id: nodeId, label: site, color: '#00ccff', shape: 'ellipse' });
+    // Helper to add node
+    function addNode(label, color, shape, group) {
+        nodes.add({ id: nodeId, label: label, color: color, shape: shape, group: group });
         edges.add({ from: 1, to: nodeId });
         nodeId++;
+    }
+
+    // Social Accounts (holehe)
+    serverDataGraph.holehe_list.forEach(site => {
+        addNode('🔗 ' + site, '#00ccff', 'ellipse', 'social');
     });
 
-    // Add Hardware (from Visits - passed via template)
-    const devices = serverDataGraph.devices;
-    devices.forEach(dev => {
-        nodes.add({ id: nodeId, label: dev, color: '#ffcc00', shape: 'diamond' });
-        edges.add({ from: 1, to: nodeId });
-        nodeId++;
+    // Devices
+    serverDataGraph.devices.forEach(dev => {
+        addNode('📱 ' + dev, '#ffcc00', 'diamond', 'device');
     });
+
+    // IPs
+    serverDataGraph.ips.forEach(ip => {
+        addNode('🌐 ' + ip, '#ff6b6b', 'dot', 'ip');
+    });
+
+    // Countries
+    serverDataGraph.countries.forEach(country => {
+        if (country) addNode('🏳️ ' + country, '#9b59b6', 'triangle', 'location');
+    });
+
+    // Organizations
+    serverDataGraph.orgs.forEach(org => {
+        if (org) addNode('🏢 ' + org, '#3498db', 'box', 'org');
+    });
+
+    // Canvas Fingerprints
+    serverDataGraph.canvas_hashes.forEach(hash => {
+        addNode('🔒 #' + hash.slice(0, 8), '#e74c3c', 'hexagon', 'fingerprint');
+    });
+
+    // Related Leads (same device)
+    serverDataGraph.related_leads.forEach(email => {
+        if (email !== serverDataGraph.lead.email) {
+            addNode('👤 ' + email, '#2ecc71', 'star', 'related');
+        }
+    });
+
+    // Gaia ID
+    if (serverDataGraph.gaia_id) {
+        addNode('🆔 Gaia: ' + serverDataGraph.gaia_id, '#f39c12', 'box', 'gaia');
+    }
 
     var container = document.getElementById('network');
     var data = { nodes: nodes, edges: edges };
     var options = {
         nodes: {
             borderWidth: 2,
-            shadow: true
+            shadow: true,
+            font: { size: 12, color: '#ffffff' }
+        },
+        edges: {
+            color: { color: 'rgba(255,255,255,0.3)' },
+            width: 1
         },
         physics: {
-            stabilization: false,
+            stabilization: { iterations: 100 },
             barnesHut: {
-                gravitationalConstant: -2000,
-                springLength: 150
+                gravitationalConstant: -3000,
+                springLength: 120,
+                springConstant: 0.04
             }
+        },
+        groups: {
+            social: { color: '#00ccff' },
+            device: { color: '#ffcc00' },
+            ip: { color: '#ff6b6b' },
+            location: { color: '#9b59b6' },
+            org: { color: '#3498db' },
+            fingerprint: { color: '#e74c3c' },
+            related: { color: '#2ecc71' },
+            gaia: { color: '#f39c12' }
         }
     };
     var network = new vis.Network(container, data, options);

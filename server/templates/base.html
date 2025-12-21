@@ -320,7 +320,10 @@
                 class="{% if request.path == '/dashboard/timeline' %}active{% endif %}">Timeline</a>
             <a href="/dashboard/contacts"
                 class="{% if request.path == '/dashboard/contacts' %}active{% endif %}">Contacts</a>
-            <a href="/dashboard/ai" class="{% if request.path == '/dashboard/ai' %}active{% endif %}">AI</a>
+            <a href="/dashboard/ai"
+                class="{% if '/dashboard/ai' in request.path and '/chat' not in request.path %}active{% endif %}">AI</a>
+            <a href="/dashboard/ai/chat" class="{% if '/dashboard/ai/chat' in request.path %}active{% endif %}"><i
+                    class="fas fa-comments"></i> Chat</a>
             <a href="/dashboard/settings">Settings</a>
         </div>
         <div>

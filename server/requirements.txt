@@ -13,3 +13,4 @@ orjson
 google-genai
 holehe
 blackbird-osint
+httpx

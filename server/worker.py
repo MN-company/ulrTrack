@@ -45,62 +45,69 @@ def start_worker(app):
                             lead.scan_status = 'pending'
                             db.session.commit()
                         
+                        found_sites = []
+                        error_msg = None
+                        
                         try:
-                            cmd = Config.HOLEHE_CMD
-                            # Auto-detect holehe in common locations if default
-                            if cmd == 'holehe':
-                                possible_paths = [
-                                    os.path.join(os.path.dirname(app.root_path), '.venv', 'bin', 'holehe'),
-                                    os.path.join(os.path.dirname(app.root_path), 'venv', 'bin', 'holehe'),
-                                    '/usr/local/bin/holehe',
-                                    '/home/mncompany/.local/bin/holehe'
-                                ]
-                                for p in possible_paths:
-                                    if os.path.exists(p):
-                                        cmd = p
-                                        break
+                            # V36: Use holehe Python API directly instead of subprocess
+                            import asyncio
+                            import httpx
+                            from holehe.modules.social_media import twitter, instagram, facebook, linkedin, tiktok, snapchat, pinterest
+                            from holehe.modules.mails import google, protonmail, yahoo
+                            from holehe.modules.music import spotify
+                            from holehe.modules.shopping import amazon
                             
-                            # Check if holehe exists
-                            import shutil
-                            if not shutil.which(cmd) and not os.path.exists(cmd):
-                                raise Exception(f"Holehe not found at {cmd}. Install with: pip install holehe")
-                                        
-                            print(f"ASYNC OSINT: Running {cmd} for {email}")
-                            import subprocess
-                            result = subprocess.run([cmd, email, '--only-used', '--no-color'], 
-                                                   capture_output=True, text=True, timeout=180)
+                            async def check_module(module, client, email):
+                                try:
+                                    out = []
+                                    await module(email, client, out)
+                                    for r in out:
+                                        if r.get('exists') == True:
+                                            return r.get('name', module.__name__)
+                                except:
+                                    pass
+                                return None
                             
-                            output = result.stdout
-                            found_sites = []
-                            for line in output.split('\n'):
-                                line = line.strip()
-                                if '[+]' in line:
-                                    parts = line.split(']')
-                                    if len(parts) > 1: 
-                                        found_sites.append(parts[1].strip())
+                            async def run_holehe():
+                                results = []
+                                modules = [twitter, instagram, facebook, linkedin, tiktok, 
+                                          snapchat, pinterest, google, protonmail, yahoo, 
+                                          spotify, amazon]
+                                
+                                async with httpx.AsyncClient(timeout=10.0) as client:
+                                    tasks = [check_module(m, client, email) for m in modules]
+                                    responses = await asyncio.gather(*tasks, return_exceptions=True)
+                                    for r in responses:
+                                        if r and not isinstance(r, Exception):
+                                            results.append(r)
+                                return results
                             
-                            lead = Lead.query.filter_by(email=email).first()
-                            if lead:
+                            # Run async in thread
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                            found_sites = loop.run_until_complete(run_holehe())
+                            loop.close()
+                            
+                            print(f"ASYNC OSINT: Holehe found {len(found_sites)} sites for {email}")
+                            
+                        except ImportError as e:
+                            error_msg = f"Holehe not installed: {e}"
+                            print(f"ASYNC OSINT: {error_msg}")
+                        except Exception as e:
+                            error_msg = f"Holehe error: {str(e)[:100]}"
+                            print(f"ASYNC OSINT ERROR: {e}")
+                        
+                        # Save results
+                        lead = Lead.query.filter_by(email=email).first()
+                        if lead:
+                            if error_msg:
+                                lead.holehe_data = json.dumps([error_msg])
+                                lead.scan_status = 'failed'
+                            else:
                                 lead.holehe_data = json.dumps(found_sites)
                                 lead.scan_status = 'completed'
-                                lead.last_scan = datetime.utcnow()
-                                db.session.commit()
-                                print(f"ASYNC OSINT: Success for {email}. Found {len(found_sites)} sites.")
-                                
-                        except subprocess.TimeoutExpired:
-                            print(f"ASYNC OSINT TIMEOUT: {email}")
-                            lead = Lead.query.filter_by(email=email).first()
-                            if lead:
-                                lead.scan_status = 'failed'
-                                lead.holehe_data = json.dumps(['TIMEOUT'])
-                                db.session.commit()
-                        except Exception as e:
-                            print(f"ASYNC OSINT ERROR: {e}")
-                            lead = Lead.query.filter_by(email=email).first()
-                            if lead:
-                                lead.scan_status = 'failed'
-                                lead.holehe_data = json.dumps([f'ERROR: {str(e)[:50]}'])
-                                db.session.commit()
+                            lead.last_scan = datetime.utcnow()
+                            db.session.commit()
                         
                         # V34: Blackbird Username Search (if email has username pattern)
                         try:

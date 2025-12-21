@@ -567,6 +567,90 @@ def ai_auto_tag_all():
     flash(f'Queued {len(leads)} leads for AI auto-tagging.', 'success')
     return redirect(url_for('dashboard.ai_dashboard'))
 
+# ============================================
+# V36: AI CHAT
+# ============================================
+
+@bp.route('/ai/chat')
+@login_required
+def ai_chat():
+    """AI Chat interface for conversational analysis."""
+    return render_template('ai_chat.html')
+
+@bp.route('/ai/chat/send', methods=['POST'])
+@login_required
+def ai_chat_send():
+    """Send message to AI and get response."""
+    import json as json_lib
+    
+    message = request.form.get('message', '')
+    context_type = request.form.get('context_type', 'general')
+    context_id = request.form.get('context_id')
+    
+    if not message:
+        return json_lib.dumps({'error': 'No message'}), 400
+    
+    if not Config.GEMINI_API_KEY:
+        return json_lib.dumps({'error': 'GEMINI_API_KEY not configured'}), 500
+    
+    try:
+        from google import genai
+        client = genai.Client(api_key=Config.GEMINI_API_KEY)
+        
+        # Build context based on type
+        system_context = "You are a cybersecurity intelligence analyst expert. Help the user analyze data and identify patterns."
+        
+        if context_type == 'lead' and context_id:
+            lead = Lead.query.get(int(context_id))
+            if lead:
+                visits = Visit.query.filter_by(email=lead.email).all()
+                countries = list(set([v.country for v in visits if v.country]))
+                devices = list(set([v.device_type for v in visits if v.device_type]))
+                orgs = list(set([v.org for v in visits if v.org]))
+                
+                system_context += f"""
+
+LEAD CONTEXT:
+Email: {lead.email}
+Name: {lead.name or 'Unknown'}
+Tags: {lead.tags or 'None'}
+Visits: {len(visits)}
+Countries: {', '.join(countries)}
+Devices: {', '.join(devices)}
+Organizations: {', '.join(orgs)}
+OSINT Data: {lead.holehe_data or 'None'}
+"""
+
+        elif context_type == 'visit' and context_id:
+            visit = Visit.query.get(int(context_id))
+            if visit:
+                system_context += f"""
+
+VISIT CONTEXT:
+IP: {visit.ip_address}
+Country: {visit.country}, City: {visit.city}
+Device: {visit.device_type}, OS: {visit.os_name}
+Browser: {visit.browser_name}
+Email: {visit.email or 'Anonymous'}
+Organization: {visit.org or 'Unknown'}
+Canvas Hash: {visit.canvas_hash or 'None'}
+"""
+
+        prompt = f"{system_context}\n\nUser Question: {message}"
+        
+        response = client.models.generate_content(
+            model=Config.GEMINI_MODEL,
+            contents=prompt
+        )
+        
+        return json_lib.dumps({
+            'response': response.text,
+            'model': Config.GEMINI_MODEL
+        })
+        
+    except Exception as e:
+        return json_lib.dumps({'error': str(e)}), 500
+
 @bp.route('/settings', methods=['GET', 'POST'])
 @login_required
 def settings():
