@@ -263,6 +263,48 @@
             color: var(--accent);
             border-color: rgba(0, 255, 157, 0.3);
         }
+
+        /* Button Sizes - CONSISTENT */
+        .btn-sm {
+            padding: 6px 12px !important;
+            font-size: 0.8rem !important;
+            border-radius: 6px !important;
+        }
+
+        /* Danger Button */
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+        }
+
+        .btn-danger.btn-sm {
+            padding: 6px 12px !important;
+        }
+
+        /* Gray Badge */
+        .badge-gray {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-sec);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Flex Row Helper */
+        .flex-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
     </style>
     {% block head %}{% endblock %}
 </head>
@@ -271,7 +313,7 @@
 
     {% if current_user.is_authenticated and not hide_nav %}
     <nav>
-        <div class="logo">STEALTH<span>V17</span></div>
+        <div class="logo">STEALTH<span>V35</span></div>
         <div class="nav-links">
             <a href="/dashboard" class="{% if request.path == '/dashboard' %}active{% endif %}">Dashboard</a>
             <a href="/dashboard/timeline"

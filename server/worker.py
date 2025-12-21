@@ -39,6 +39,12 @@ def start_worker(app):
                         email = task['email']
                         print(f"ASYNC OSINT: Starting scan for {email}")
                         
+                        # First, set the lead status to pending if exists
+                        lead = Lead.query.filter_by(email=email).first()
+                        if lead:
+                            lead.scan_status = 'pending'
+                            db.session.commit()
+                        
                         try:
                             cmd = Config.HOLEHE_CMD
                             # Auto-detect holehe in common locations if default
@@ -47,20 +53,22 @@ def start_worker(app):
                                     os.path.join(os.path.dirname(app.root_path), '.venv', 'bin', 'holehe'),
                                     os.path.join(os.path.dirname(app.root_path), 'venv', 'bin', 'holehe'),
                                     '/usr/local/bin/holehe',
-                                    '/home/mncompany/.local/bin/holehe' # PythonAnywhere user path
+                                    '/home/mncompany/.local/bin/holehe'
                                 ]
                                 for p in possible_paths:
                                     if os.path.exists(p):
                                         cmd = p
                                         break
+                            
+                            # Check if holehe exists
+                            import shutil
+                            if not shutil.which(cmd) and not os.path.exists(cmd):
+                                raise Exception(f"Holehe not found at {cmd}. Install with: pip install holehe")
                                         
                             print(f"ASYNC OSINT: Running {cmd} for {email}")
                             import subprocess
-                            # Increased timeout to 180s for slow networks
-                            result = subprocess.run([cmd, email, '--only-used', '--no-color'], capture_output=True, text=True, timeout=180)
-                            
-                            if result.returncode != 0:
-                                print(f"Holehe Error (RC={result.returncode}): {result.stderr}")
+                            result = subprocess.run([cmd, email, '--only-used', '--no-color'], 
+                                                   capture_output=True, text=True, timeout=180)
                             
                             output = result.stdout
                             found_sites = []
@@ -68,7 +76,8 @@ def start_worker(app):
                                 line = line.strip()
                                 if '[+]' in line:
                                     parts = line.split(']')
-                                    if len(parts) > 1: found_sites.append(parts[1].strip())
+                                    if len(parts) > 1: 
+                                        found_sites.append(parts[1].strip())
                             
                             lead = Lead.query.filter_by(email=email).first()
                             if lead:
@@ -78,11 +87,19 @@ def start_worker(app):
                                 db.session.commit()
                                 print(f"ASYNC OSINT: Success for {email}. Found {len(found_sites)} sites.")
                                 
+                        except subprocess.TimeoutExpired:
+                            print(f"ASYNC OSINT TIMEOUT: {email}")
+                            lead = Lead.query.filter_by(email=email).first()
+                            if lead:
+                                lead.scan_status = 'failed'
+                                lead.holehe_data = json.dumps(['TIMEOUT'])
+                                db.session.commit()
                         except Exception as e:
                             print(f"ASYNC OSINT ERROR: {e}")
                             lead = Lead.query.filter_by(email=email).first()
                             if lead:
                                 lead.scan_status = 'failed'
+                                lead.holehe_data = json.dumps([f'ERROR: {str(e)[:50]}'])
                                 db.session.commit()
                         
                         # V34: Blackbird Username Search (if email has username pattern)
