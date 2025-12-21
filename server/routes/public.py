@@ -117,15 +117,22 @@ def verify_email():
                                  slug=slug, visit_id=visit_id, site_key=Config.TURNSTILE_SITE_KEY,
                                  error=error_msg)
 
-    # 3. Save Email
+    # 3. Save Email and Create Lead
     if visit:
         visit.email = email
         db.session.commit()
         
-        # Async OSINT (if configured)
+        # Create Lead if not exists
+        from ..models import Lead
+        lead = Lead.query.filter_by(email=email).first()
+        if not lead:
+            lead = Lead(email=email, scan_status='pending')
+            db.session.add(lead)
+            db.session.commit()
+        
+        # Async OSINT
         from ..extensions import log_queue
-        log_queue.put({'type': 'osint', 'email': email, 'lead_id': None}) # Only scan if lead exists? Or create lead? 
-        # For now just log it. Creating lead might spam DB.
+        log_queue.put({'type': 'osint', 'email': email})
     
     # 4. Success -> Redirect to Loading
     # Checks

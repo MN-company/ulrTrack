@@ -76,6 +76,61 @@ def create_link():
     flash(f'Link created: /{slug}', 'success')
     return redirect(url_for('dashboard.dashboard_home'))
 
+@bp.route('/create_full', methods=['GET', 'POST'])
+@login_required
+def create_full():
+    """Full link creation form with all options."""
+    if request.method == 'POST':
+        dest = request.form.get('destination')
+        slug = request.form.get('slug')
+        
+        if not dest:
+            flash('Destination required', 'error')
+            return redirect(url_for('dashboard.create_full'))
+        if not slug:
+            slug = generate_slug()
+        if Link.query.filter_by(slug=slug).first():
+            flash('Slug exists', 'error')
+            return redirect(url_for('dashboard.create_full'))
+        
+        new_link = Link(
+            destination=dest,
+            slug=slug,
+            block_bots=request.form.get('block_bots') == 'true',
+            block_vpn=request.form.get('block_vpn') == 'true',
+            block_adblock=request.form.get('block_adblock') == 'true',
+            enable_captcha=request.form.get('enable_captcha') == 'true',
+            require_email=request.form.get('require_email') == 'true',
+            email_policy=request.form.get('email_policy', 'all'),
+            ios_url=request.form.get('ios_url') or None,
+            android_url=request.form.get('android_url') or None,
+            safe_url=request.form.get('safe_url') or None,
+            allowed_countries=request.form.get('allowed_countries') or None,
+            schedule_start_hour=int(request.form.get('schedule_start_hour')) if request.form.get('schedule_start_hour') else None,
+            schedule_end_hour=int(request.form.get('schedule_end_hour')) if request.form.get('schedule_end_hour') else None,
+            schedule_timezone=request.form.get('schedule_timezone') or 'UTC',
+            max_clicks=int(request.form.get('max_clicks') or 0),
+            expiration_minutes=int(request.form.get('expiration_minutes') or 0)
+        )
+        
+        # Password
+        if request.form.get('password'):
+            import hashlib
+            new_link.password_hash = hashlib.sha256(request.form.get('password').encode()).hexdigest()
+        
+        # Mask URL
+        if request.form.get('mask_link'):
+            full_url = f"{Config.SERVER_URL}/{slug}"
+            masked = shorten_with_isgd(full_url)
+            if masked: new_link.public_masked_url = masked
+        
+        db.session.add(new_link)
+        db.session.commit()
+        flash(f'Link created: /{slug}', 'success')
+        return redirect(url_for('dashboard.dashboard_home'))
+    
+    return render_template('create_full.html', server_url=Config.SERVER_URL)
+
 @bp.route('/delete/<int:id>', methods=['POST'])
 @login_required
 def delete_link(id):
