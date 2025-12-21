@@ -1101,3 +1101,38 @@ def export_pdf(slug):
     response.headers['Content-Disposition'] = f'attachment; filename={slug}_report.html'
     return response
 
+
+# V41: Custom AI Analysis
+@bp.route('/lead/<int:lead_id>/ai_custom', methods=['POST'])
+@login_required
+def ai_custom(lead_id):
+    lead = Lead.query.get_or_404(lead_id)
+    prompt = request.form.get('prompt')
+    
+    if prompt:
+        try:
+            result = ai.generate(prompt)
+            
+            # Save to AI Identity field to display in Profile
+            import json
+            cf = json.loads(lead.custom_fields or '{}')
+            cf['ai_identity'] = result
+            lead.custom_fields = json.dumps(cf)
+            db.session.commit()
+            
+            flash("Custom AI Analysis Executed.", "success")
+        except Exception as e:
+            flash(f"AI Error: {str(e)}", "error")
+            
+    return redirect(url_for('dashboard.contacts'))
+
+
+# V43: Trigger Blackbird Scan
+@bp.route('/lead/<int:lead_id>/blackbird', methods=['POST'])
+@login_required
+def trigger_blackbird(lead_id):
+    lead = Lead.query.get_or_404(lead_id)
+    log_queue.put({'type': 'blackbird', 'lead_id': lead.id})
+    flash(f"Blackbird Scan Queued for {lead.email.split('@')[0]}", "success")
+    return redirect(url_for('dashboard.contacts'))
+

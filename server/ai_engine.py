@@ -47,22 +47,59 @@ class AIEngine:
         
         target_model = model or self.model_name
         
+        # V42: Safety Settings (BLOCK_NONE) for Red Teaming
+        # This allows the AI to analyze malware/phishing contexts without refusal.
+        safety_settings_old = [
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+        ]
+        
         try:
             if self.mode == 'new_sdk':
-                # New SDK Usage
-                # Verify model name format. New SDK often prefers 'gemini-1.5-flash'
+                # New SDK Usage (google.genai)
+                # Note: Config structure varies by version, using safe default if possible or omitting if known issues.
+                # Currently, new SDK V1 often ignores old style safety settings or uses different format.
+                # We will try to pass config if supported, otherwise rely on prompt engineering.
+                
+                # Attempt to pass config for safety
+                from google.genai import types
+                # Approximate config for new SDK (v1.0+)
+                config = types.GenerateContentConfig(
+                    safety_settings=[
+                        types.SafetySetting(
+                            category='HARM_CATEGORY_DANGEROUS_CONTENT',
+                            threshold='BLOCK_NONE'
+                        ),
+                         types.SafetySetting(
+                            category='HARM_CATEGORY_HARASSMENT',
+                            threshold='BLOCK_NONE'
+                        ),
+                         types.SafetySetting(
+                            category='HARM_CATEGORY_HATE_SPEECH',
+                            threshold='BLOCK_NONE'
+                        ),
+                         types.SafetySetting(
+                            category='HARM_CATEGORY_SEXUALLY_EXPLICIT',
+                            threshold='BLOCK_NONE'
+                        )
+                    ]
+                )
+                
                 response = self.client.models.generate_content(
                     model=target_model,
-                    contents=prompt
+                    contents=prompt,
+                    config=config
                 )
                 if hasattr(response, 'text'):
                     return response.text.strip()
                 return str(response)
             
             elif self.mode == 'old_sdk':
-                # Old SDK Usage
+                # Old SDK Usage (google.generativeai)
                 m = self.genai_module.GenerativeModel(target_model)
-                response = m.generate_content(prompt)
+                response = m.generate_content(prompt, safety_settings=safety_settings_old)
                 if hasattr(response, 'text'):
                     return response.text.strip()
                 return str(response)
@@ -70,6 +107,14 @@ class AIEngine:
         except Exception as e:
             err_str = str(e)
             print(f"AI Generate Error: {err_str}")
+            # Fallback retry without safety settings if it failed due to config error (not refusal)
+            if "argument" in err_str or "parameter" in err_str:
+                 try:
+                     if self.mode == 'new_sdk':
+                         response = self.client.models.generate_content(model=target_model, contents=prompt)
+                         return response.text.strip()
+                 except: pass
+            
             return f"AI Generation Failed: {err_str}"
 
     def generate_dorks(self, email):

@@ -138,8 +138,53 @@ def start_worker(app):
                                         print(f"ASYNC OSINT: Blackbird completed for {local_part}")
                         except Exception as e:
                             print(f"Blackbird Error: {e}")
-                    
-                    elif task['type'] == 'ai_analyze':
+                            print(f"Blackbird Error: {e}")
+
+                    # V43: Dedicated Blackbird Task
+                    elif task['type'] == 'blackbird':
+                        lead_id = task.get('lead_id')
+                        lead = Lead.query.get(lead_id)
+                        if lead:
+                            username = lead.email.split('@')[0]
+                            # Robust Command Detection
+                            import shutil
+                            blackbird_cmd = shutil.which('blackbird')
+                            if not blackbird_cmd:
+                                # Try common paths
+                                for p in ['/usr/local/bin/blackbird', '/usr/bin/blackbird', os.path.expanduser('~/.local/bin/blackbird')]:
+                                    if os.path.exists(p):
+                                        blackbird_cmd = p
+                                        break
+                            
+                            if blackbird_cmd:
+                                try:
+                                    print(f"BLACKBIRD: scanning {username}...")
+                                    import subprocess
+                                    # Timeout increased to 120s
+                                    result = subprocess.run([blackbird_cmd, '-u', username, '--json'], 
+                                                          capture_output=True, text=True, timeout=120)
+                                    
+                                    import json as json_lib
+                                    cf = json_lib.loads(lead.custom_fields or '{}')
+                                    # Parse JSON output if possible, else save raw stdout
+                                    try:
+                                        # Blackbird outputs JSON to a file usually, but --json flag might print to stdout depending on version
+                                        # If stdout is empty, check for file?
+                                        # For now assume stdout or just raw text
+                                        output = result.stdout
+                                        if not output and result.stderr: output = "Error: " + result.stderr
+                                        cf['blackbird'] = output[:5000]
+                                    except:
+                                        cf['blackbird'] = result.stdout[:5000]
+                                        
+                                    lead.custom_fields = json_lib.dumps(cf)
+                                    lead.last_scan = datetime.utcnow()
+                                    db.session.commit()
+                                    print(f"BLACKBIRD: Success for {username}")
+                                except Exception as e:
+                                    print(f"Blackbird Execution Error: {e}")
+                            else:
+                                print("BLACKBIRD: Command not found.")
                         v_id = task['visit_id']
                         ua = task['ua']
                         screen = task['screen']

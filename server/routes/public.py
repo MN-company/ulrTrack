@@ -80,6 +80,14 @@ def redirect_to_url(slug):
         if any(p in org_lower for p in cloud_providers):
             is_bot = True
 
+    if link.block_vpn and geo.get('hosting') == True:
+        visit.is_suspicious = True
+        db.session.commit()
+        if link.safe_url:
+             final_dest = link.safe_url
+        else:
+             return render_template('error.html', message="Anonymizer/VPN Detected", visit_id=visit.id, hide_nav=True), 403
+
     if link.block_bots and is_bot:
          visit.is_suspicious = True
          db.session.commit()
@@ -87,6 +95,13 @@ def redirect_to_url(slug):
              final_dest = link.safe_url
          else: 
              return render_template('error.html', message="Suspicious Traffic", visit_id=visit.id, hide_nav=True), 403
+
+    # V23: Email Gate Enforcement
+    if link.require_email:
+        # Check for verified cookie
+        verified_cookie = request.cookies.get(f'verified_{link.slug}')
+        if not verified_cookie:
+             return render_template('email_gate.html', slug=link.slug, visit_id=visit.id, site_key=Config.TURNSTILE_SITE_KEY)
 
     # V38 AI Architect Custom Rendering
     if link.custom_html:
