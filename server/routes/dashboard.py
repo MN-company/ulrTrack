@@ -16,8 +16,35 @@ from ..models import Link, Visit, Lead
 from ..extensions import db, log_queue
 from ..config import Config
 from ..utils import generate_slug, shorten_with_isgd
+from ..ai_engine import ai
 
 bp = Blueprint('dashboard', __name__, url_prefix='/dashboard')
+
+# ... (End of file appends)
+
+# V40 AI Dorking
+@bp.route('/lead/<int:lead_id>/dork', methods=['POST'])
+@login_required
+def generate_dorks(lead_id):
+    from flask import redirect, url_for, flash
+    lead = Lead.query.get_or_404(lead_id)
+    
+    # Generate Dorks
+    try:
+        dorks_text = ai.generate_dorks(lead.email)
+        
+        # Save to custom_fields
+        import json
+        cf = json.loads(lead.custom_fields or '{}')
+        cf['dorks'] = dorks_text
+        lead.custom_fields = json.dumps(cf)
+        db.session.commit()
+        
+        flash("AI Dorks Generated Successfully", "success")
+    except Exception as e:
+        flash(f"AI Error: {str(e)}", "error")
+        
+    return redirect(url_for('dashboard.lead_profile', lead_id=lead_id))
 bp.add_app_template_filter(md5_filter, 'md5')
 
 @bp.route('/')
@@ -372,6 +399,7 @@ def lead_profile(lead_id):
         ai_identity = cf.get('ai_identity')
         gaia_id = cf.get('gaia_id')
         blackbird_data = cf.get('blackbird')
+        dorks = cf.get('dorks')
     except:
         pass
 
@@ -387,7 +415,8 @@ def lead_profile(lead_id):
                           gravatar_data=gravatar_data,
                           ai_identity=ai_identity,
                           gaia_id=gaia_id,
-                          blackbird_data=blackbird_data)
+                          blackbird_data=blackbird_data,
+                          dorks=dorks)
 
 @bp.route('/qr/<slug>')
 @login_required
@@ -942,14 +971,13 @@ Return ONLY the raw HTML code starting with <!DOCTYPE html>.
 Do not include markdown backticks."""
 
     try:
-        from google import genai
+        from ..ai_engine import ai
         from flask import jsonify
-        client = genai.Client(api_key=Config.GEMINI_API_KEY)
-        response = client.models.generate_content(
-            model=Config.GEMINI_MODEL,
-            contents=prompt
-        )
-        html = response.text.replace('```html', '').replace('```', '').strip()
+        
+        html = ai.generate(prompt)
+        
+        # Cleanup markdown formatting if present
+        html = html.replace('```html', '').replace('```', '').strip()
         return jsonify({'html': html})
     except Exception as e:
         from flask import jsonify

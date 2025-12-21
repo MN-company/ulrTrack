@@ -146,11 +146,9 @@ def start_worker(app):
                         visit = Visit.query.get(v_id)
                         if visit and Config.GEMINI_API_KEY:
                             try:
-                                from google import genai
-                                client = genai.Client(api_key=Config.GEMINI_API_KEY)
+                                from .ai_engine import ai
                                 prompt = f"Identify device from UA: '{ua}' and Screen: '{screen}'. Return ONLY device name."
-                                response = client.models.generate_content(model=Config.GEMINI_MODEL, contents=prompt)
-                                visit.ai_summary = response.text.strip()
+                                visit.ai_summary = ai.generate(prompt)
                                 db.session.commit()
                                 print(f"AI ANALYSIS: {visit.ai_summary}")
                             except Exception as e:
@@ -178,8 +176,7 @@ def start_worker(app):
                                 devices = [v.ai_summary for v in visits if v.ai_summary]
                                 
                                 # Build AI prompt
-                                from google import genai
-                                client = genai.Client(api_key=Config.GEMINI_API_KEY)
+                                from .ai_engine import ai
                                 
                                 prompt = f"""Agisci come un esperto analista di intelligence. Incrocia questi dati disparati per l'obiettivo: {email}
 Dati disponibili:
@@ -200,11 +197,11 @@ Istruzioni:
 
 Rispondi in formato testo pulito e conciso."""
 
-                                response = client.models.generate_content(model=Config.GEMINI_MODEL, contents=prompt)
+                                ai_result = ai.generate(prompt)
                                 
                                 # Store result in custom_fields
                                 import json as json_lib
-                                ai_result = response.text.strip()
+                                ai_result = ai_result.strip()
                                 cf = json_lib.loads(lead.custom_fields or '{}')
                                 cf['ai_identity'] = ai_result
                                 cf['gaia_id'] = gaia
@@ -243,8 +240,7 @@ Rispondi in formato testo pulito e conciso."""
                                 domain = email.split('@')[1] if '@' in email else ''
                                 is_corporate = not any(x in domain for x in ['gmail', 'yahoo', 'hotmail', 'outlook', 'icloud', 'proton'])
                                 
-                                from google import genai
-                                client = genai.Client(api_key=Config.GEMINI_API_KEY)
+                                from .ai_engine import ai
                                 
                                 prompt = f"""You are a lead classification AI. Based on this data, suggest 2-4 short tags (one word each, comma separated).
 
@@ -259,10 +255,10 @@ CURRENT TAGS: {lead.tags or 'none'}
 Suggest tags like: VIP, Corporate, Mobile, Italian, US, TechUser, Suspicious, Anonymous, HighValue, Returning, etc.
 Output ONLY the tags, comma separated, nothing else."""
 
-                                response = client.models.generate_content(model=Config.GEMINI_MODEL, contents=prompt)
+                                new_tags = ai.generate(prompt)
                                 
                                 # Parse and merge tags
-                                new_tags = response.text.strip()
+                                new_tags = new_tags.strip()
                                 existing = set([t.strip() for t in (lead.tags or '').split(',') if t.strip()])
                                 suggested = set([t.strip() for t in new_tags.split(',') if t.strip()])
                                 merged = existing.union(suggested)
