@@ -670,6 +670,7 @@ def settings():
             'SERVER_URL': request.form.get('server_url'),
             'HOLEHE_CMD': request.form.get('holehe_cmd'),
             'GEMINI_MODEL': request.form.get('gemini_model'),
+            'GEMINI_API_KEY': request.form.get('gemini_key'),
             'AI_PROMPT': request.form.get('ai_prompt', '').replace('\n', '\\n')
         }
         

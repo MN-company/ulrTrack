@@ -162,7 +162,7 @@ def start_worker(app):
                         lead = Lead.query.get(lead_id)
                         if lead and Config.GEMINI_API_KEY:
                             try:
-                                from ..utils import email_permutations, get_gravatar_profile, get_gaia_id
+                                from .utils import email_permutations, get_gravatar_profile, get_gaia_id
                                 
                                 # Gather all data
                                 email = lead.email
