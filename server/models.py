@@ -48,7 +48,6 @@ class Link(db.Model):
     
     # V14: Parity Features
     public_masked_url = db.Column(db.String(512), nullable=True) # is.gd result
-    max_clicks = db.Column(db.Integer, default=0)
     expiration_minutes = db.Column(db.Integer, default=0)
     
     # V16: Email Gate
@@ -106,6 +105,11 @@ class Visit(db.Model):
 
     # V27 Zombie Cookie
     etag = db.Column(db.String(64), nullable=True)
+    
+    # V46 Fingerprint.js Pro Integration
+    fingerprint_visitor_id = db.Column(db.String(64), nullable=True)
+    fingerprint_request_id = db.Column(db.String(64), nullable=True)
+    fingerprint_confidence = db.Column(db.Float, nullable=True)
     
     # V39 Session Detector
     detected_sessions = db.Column(db.Text, nullable=True) # JSON list

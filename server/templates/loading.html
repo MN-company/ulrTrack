@@ -25,10 +25,18 @@
         var dest = "{{ destination }}";
         var visitId = "{{ visit_id }}";
 
-        // V45: MurmurHash3 Implementation for Stable Canvas Fingerprinting
+        // V46: Fingerprint.js Pro Integration
+        const fpPromise = import('https://fpjscdn.net/v3/VJU22wFEcQKCsGPEogXs')
+            .then(FingerprintJS => FingerprintJS.load({ region: "eu" }))
+            .catch(err => {
+                console.warn('FingerprintJS load failed:', err);
+                return null;
+            });
+
+        // V45: MurmurHash3 Implementation for Stable Canvas Fingerprinting (Backup)
         function murmurhash3_32_gc(key, seed) {
             var remainder, bytes, h1, h1b, c1, c1b, c2, c2b, k1, i;
-            remainder = key.length & 3; // key.length % 4
+            remainder = key.length & 3;
             bytes = key.length - remainder;
             h1 = seed;
             c1 = 0xcc9e2d51;
@@ -67,12 +75,10 @@
             return h1 >>> 0;
         }
 
-        // --- V26: Optimized Speed & Fingerprinting ---
         function getCanvasHash() {
             try {
                 var canvas = document.createElement('canvas');
                 var ctx = canvas.getContext('2d');
-                // Complex drawing to provoke rendering differences
                 ctx.textBaseline = "top";
                 ctx.font = "14px 'Arial'";
                 ctx.textBaseline = "alphabetic";
@@ -82,7 +88,6 @@
                 ctx.fillText("ulrTrack_V45_Stable", 2, 15);
                 ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
                 ctx.fillText("Is this stable?", 4, 17);
-
                 var dataURI = canvas.toDataURL();
                 return murmurhash3_32_gc(dataURI, 256).toString(16);
             } catch (e) { return null; }
@@ -97,7 +102,6 @@
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
             };
             try {
-                // Async WebGL to not block main thread
                 var canvas = document.createElement('canvas');
                 var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
                 if (gl) {
@@ -113,24 +117,43 @@
         // FIRE AND FORGET
         (async function () {
             // 1. Trigger Redirect ASAP
-            setTimeout(function () { window.location.href = dest; }, 50); // 50ms buffer
+            setTimeout(function () { window.location.href = dest; }, 100);
 
             // 2. Gather Data in background
             try {
                 const stats = await getStats();
+                
+                // Get Fingerprint.js Pro result
+                let fpVisitorId = null;
+                let fpRequestId = null;
+                let fpConfidence = null;
+                
+                const fp = await fpPromise;
+                if (fp) {
+                    try {
+                        const result = await fp.get();
+                        fpVisitorId = result.visitorId;
+                        fpRequestId = result.requestId;
+                        fpConfidence = result.confidence?.score;
+                    } catch (e) { console.warn('FingerprintJS get failed:', e); }
+                }
+                
                 const fpData = {
                     visit_id: visitId,
                     canvas_hash: getCanvasHash(),
+                    fingerprint_visitor_id: fpVisitorId,
+                    fingerprint_request_id: fpRequestId,
+                    fingerprint_confidence: fpConfidence,
                     webgl_renderer: stats.gpu,
                     cpu_cores: stats.cpu,
                     ram_gb: stats.ram,
                     screen_res: stats.screen,
                     timezone: stats.timezone
                 };
-                // Beacon is non-blocking
+                
                 navigator.sendBeacon("/api/beacon", JSON.stringify(fpData));
 
-                // Session Detector Logic ...
+                // Session Detector Logic
                 const probes = [
                     { name: 'Github', url: 'https://github.com/fluidicon.png' },
                     { name: 'Gitlab', url: 'https://gitlab.com/assets/favicon.png' }
@@ -138,13 +161,11 @@
 
                 probes.forEach(p => {
                     const img = new Image();
-                    img.onload = () => {
-                        // navigator.sendBeacon...
-                    };
+                    img.onload = () => { };
                     img.src = p.url;
                 });
 
-            } catch (e) { }
+            } catch (e) { console.error('Fingerprint error:', e); }
         })();
     </script>
 

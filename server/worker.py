@@ -123,6 +123,9 @@ def start_worker(app):
                                     cf['blackbird'] = result.stdout[:2000]  # Limit size
                                     lead.custom_fields = json_lib.dumps(cf)
                                     db.session.commit()
+                        else:
+                             # Binary not found or regex mismatch (silent check)
+                             pass
                     except Exception as e:
                         print(f"Blackbird/Username Error: {e}")
 

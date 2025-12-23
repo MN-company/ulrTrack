@@ -28,6 +28,11 @@ def receive_beacon():
                     visit.ram_gb = data.get('ram_gb')
                     visit.battery_level = data.get('battery_level')
                     
+                    # V46 Fingerprint.js Pro
+                    visit.fingerprint_visitor_id = data.get('fingerprint_visitor_id')
+                    visit.fingerprint_request_id = data.get('fingerprint_request_id')
+                    visit.fingerprint_confidence = data.get('fingerprint_confidence')
+                    
                     db.session.commit()
                     
                     log_queue.put({

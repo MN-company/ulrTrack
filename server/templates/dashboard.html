@@ -150,7 +150,9 @@
                 </td>
                 <td style="text-align: right; padding-right: 24px;">
                     <div class="flex-row" style="justify-content: flex-end;">
-                        <button class="btn-outline btn-sm" /" ~ link.slug) }}')"><i class="fas fa-copy"></i></button>
+                        <button class="btn-outline btn-sm"
+                            onclick="copyLink('{{ link.public_masked_url or url_for('public.redirect_to_url', slug=link.slug, _external=True) }}')"><i
+                                class="fas fa-copy"></i></button>
                         <a href="/dashboard/qr_view/{{ link.slug }}" class="btn-outline btn-sm"><i
                                 class="fas fa-qrcode"></i></a>
                         <a href="/dashboard/stats/{{ link.slug }}" class="btn-outline btn-sm"><i
