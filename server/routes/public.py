@@ -69,55 +69,59 @@ def redirect_to_url(slug):
     if not (final_dest.startswith("http://") or final_dest.startswith("https://")):
         final_dest = "https://" + final_dest
     
-    # V37 CLOAKING LOGIC FIX
-    # Only redirect to safe_url if detected as BOT or SUSPICIOUS
-    is_bot = is_bot_ua(ua_string) or geo.get('hosting') == True
+    # === SECURITY CHECKS (Correct Order) ===
+    # Define cloud providers for VPN/Bot detection
+    cloud_providers = [
+        'google', 'amazon', 'microsoft', 'digitalocean', 'oracle', 'aliyun', 'hetzner',
+        'ovh', 'linode', 'vultr', 'lease', 'dedibox', 'choopa', 'm247', 'fly.io'
+    ]
     
-    # Check for known Cloud Providers (urlscan.io often uses these)
-    # Check for known Cloud Providers (Strict VPN/Proxy detection)
+    # 1. VPN/Bot Detection
+    is_bot = is_bot_ua(ua_string) or geo.get('hosting') == True
     if geo.get('org'):
-        cloud_providers = [
-            'google', 'amazon', 'microsoft', 'digitalocean', 'oracle', 'aliyun', 'hetzner',
-            'ovh', 'linode', 'vultr', 'lease', 'dedibox', 'choopa', 'm247', 'fly.io'
-        ]
         org_lower = geo.get('org').lower()
         if any(p in org_lower for p in cloud_providers):
-            is_bot = True # Identify as non-residential
-            
-    # V22: VPN Block Logic (Explicit)
-    # Block if Hosting=True OR if it's a known Cloud Provider (regardless of Bot/UserAgent)
+            is_bot = True
+    
     is_vpn_or_cloud = geo.get('hosting') == True or (geo.get('org') and any(p in geo.get('org').lower() for p in cloud_providers))
     
+    # Check VPN block
     if link.block_vpn and is_vpn_or_cloud:
         visit.is_suspicious = True
         db.session.commit()
         if link.safe_url:
-             final_dest = link.safe_url
+            final_dest = link.safe_url
         else:
-             return render_template('error.html', message="Anonymizer/VPN/Cloud IP Detected", visit_id=visit.id, hide_nav=True), 403
-
-    if link.block_vpn and geo.get('hosting') == True:
+            return render_template('error.html', message="Anonymizer/VPN/Cloud IP Detected", visit_id=visit.id, hide_nav=True), 403
+    
+    # Check Bot block
+    if link.block_bots and is_bot:
         visit.is_suspicious = True
         db.session.commit()
         if link.safe_url:
-             final_dest = link.safe_url
+            final_dest = link.safe_url
         else:
-             return render_template('error.html', message="Anonymizer/VPN Detected", visit_id=visit.id, hide_nav=True), 403
-
-    if link.block_bots and is_bot:
-         visit.is_suspicious = True
-         db.session.commit()
-         if link.safe_url: 
-             final_dest = link.safe_url
-         else: 
-             return render_template('error.html', message="Suspicious Traffic", visit_id=visit.id, hide_nav=True), 403
-
-    # V23: Email Gate Enforcement
+            return render_template('error.html', message="Suspicious Traffic", visit_id=visit.id, hide_nav=True), 403
+    
+    # 2. Captcha Check
+    if link.enable_captcha:
+        captcha_cookie = request.cookies.get(f'auth_captcha_{link.slug}')
+        expected_hash = hashlib.sha256(f"captcha_ok_{link.slug}{Config.SECRET_KEY}".encode()).hexdigest()
+        if captcha_cookie != expected_hash:
+            return render_template('captcha.html', slug=link.slug, visit_id=visit.id, site_key=Config.TURNSTILE_SITE_KEY, hide_nav=True)
+    
+    # 3. Password Check
+    if link.password_hash:
+        auth_cookie = request.cookies.get(f'auth_pwd_{link.slug}')
+        expected_hash = hashlib.sha256(f"{link.password_hash}{Config.SECRET_KEY}".encode()).hexdigest()
+        if auth_cookie != expected_hash:
+            return render_template('password.html', slug=link.slug, visit_id=visit.id, site_key=Config.TURNSTILE_SITE_KEY, hide_nav=True)
+    
+    # 4. Email Gate Check
     if link.require_email:
-        # Check for verified cookie
         verified_cookie = request.cookies.get(f'verified_{link.slug}')
         if not verified_cookie:
-             return render_template('email_gate.html', slug=link.slug, visit_id=visit.id, site_key=Config.TURNSTILE_SITE_KEY)
+            return render_template('email_gate.html', slug=link.slug, visit_id=visit.id, site_key=Config.TURNSTILE_SITE_KEY, hide_nav=True)
 
     # V38 AI Architect Custom Rendering
     if link.custom_html:
@@ -151,6 +155,50 @@ def redirect_to_url(slug):
     resp.headers['Cache-Control'] = 'private, max-age=31536000' # Force caching
     
     return resp
+
+@bp.route('/verify_captcha', methods=['POST'])
+def verify_captcha():
+    slug = request.form.get('slug')
+    turnstile_token = request.form.get('cf-turnstile-response')
+    visit_id = request.form.get('visit_id')
+    client_ip = request.headers.get('X-Real-IP', request.remote_addr)
+    
+    link = Link.query.filter_by(slug=slug).first_or_404()
+    
+    if verify_turnstile(turnstile_token, client_ip):
+        auth_hash = hashlib.sha256(f"captcha_ok_{slug}{Config.SECRET_KEY}".encode()).hexdigest()
+        resp = make_response(redirect(f"/{slug}"))
+        resp.set_cookie(f"auth_captcha_{slug}", auth_hash, max_age=3600, httponly=True, secure=True, samesite='Lax')
+        return resp
+    else:
+        return render_template('captcha.html', slug=slug, visit_id=visit_id, 
+                               site_key=Config.TURNSTILE_SITE_KEY, error="Verification Failed", hide_nav=True), 400
+
+@bp.route('/verify_password', methods=['POST'])
+def verify_password():
+    slug = request.form.get('slug')
+    password = request.form.get('password')
+    turnstile_token = request.form.get('cf-turnstile-response')
+    visit_id = request.form.get('visit_id')
+    client_ip = request.headers.get('X-Real-IP', request.remote_addr)
+    
+    link = Link.query.filter_by(slug=slug).first_or_404()
+    
+    # Verify Turnstile
+    if not verify_turnstile(turnstile_token, client_ip):
+        return render_template('password.html', slug=slug, visit_id=visit_id,
+                               site_key=Config.TURNSTILE_SITE_KEY, error="Captcha Failed", hide_nav=True), 400
+    
+    # Verify Password
+    user_hash = hashlib.sha256(password.encode()).hexdigest()
+    if user_hash == link.password_hash:
+        auth_hash = hashlib.sha256(f"{link.password_hash}{Config.SECRET_KEY}".encode()).hexdigest()
+        resp = make_response(redirect(f"/{slug}"))
+        resp.set_cookie(f"auth_pwd_{slug}", auth_hash, max_age=3600, httponly=True, secure=True, samesite='Lax')
+        return resp
+    else:
+        return render_template('password.html', slug=slug, visit_id=visit_id,
+                               site_key=Config.TURNSTILE_SITE_KEY, error="Invalid Password", hide_nav=True), 401
 
 @bp.route('/verify_email', methods=['POST'])
 def verify_email():
