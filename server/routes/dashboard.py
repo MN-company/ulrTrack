@@ -394,7 +394,6 @@ def lead_profile(lead_id):
     ai_identity = None
     gaia_id = None
     blackbird_data = None
-    dorks = None
     try:
         cf = json.loads(lead.custom_fields or '{}')
         ai_identity = cf.get('ai_identity')
@@ -686,7 +685,8 @@ OSINT Data: {lead.holehe_data or 'None'}
 VISIT CONTEXT:
 IP: {visit.ip_address}
 Country: {visit.country}, City: {visit.city}
-Device: {visit.device_type}, OS: {visit.os_family}
+Device: {visit.device_type}, OS: {visit.os_name}
+Browser: {visit.browser_name}
 Email: {visit.email or 'Anonymous'}
 Organization: {visit.org or 'Unknown'}
 Canvas Hash: {visit.canvas_hash or 'None'}
@@ -1111,8 +1111,7 @@ def ai_custom(lead_id):
     
     if prompt:
         try:
-            # Use Agentic Loop to allow DB access
-            result = ai.run_agentic_loop(prompt)
+            result = ai.generate(prompt)
             
             # Save to AI Identity field to display in Profile
             import json

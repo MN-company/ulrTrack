@@ -81,14 +81,6 @@ def create_app():
             try: c.execute("ALTER TABLE visit ADD COLUMN detected_sessions TEXT")
             except: pass
             
-            # V46 Fingerprint.js Pro
-            try: c.execute("ALTER TABLE visit ADD COLUMN fingerprint_visitor_id VARCHAR(64)")
-            except: pass
-            try: c.execute("ALTER TABLE visit ADD COLUMN fingerprint_request_id VARCHAR(64)")
-            except: pass
-            try: c.execute("ALTER TABLE visit ADD COLUMN fingerprint_confidence REAL")
-            except: pass
-            
             conn.commit()
             conn.close()
         except Exception: pass

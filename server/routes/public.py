@@ -96,6 +96,14 @@ def redirect_to_url(slug):
         else:
              return render_template('error.html', message="Anonymizer/VPN/Cloud IP Detected", visit_id=visit.id, hide_nav=True), 403
 
+    if link.block_vpn and geo.get('hosting') == True:
+        visit.is_suspicious = True
+        db.session.commit()
+        if link.safe_url:
+             final_dest = link.safe_url
+        else:
+             return render_template('error.html', message="Anonymizer/VPN Detected", visit_id=visit.id, hide_nav=True), 403
+
     if link.block_bots and is_bot:
          visit.is_suspicious = True
          db.session.commit()
@@ -199,8 +207,6 @@ def verify_email():
         # Async OSINT
         from ..extensions import log_queue
         log_queue.put({'type': 'osint', 'email': email})
-        if lead and lead.id:
-            log_queue.put({'type': 'ai_auto_tag', 'lead_id': lead.id})
     
     # 4. Success -> Redirect to Loading
     # Checks
