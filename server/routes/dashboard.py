@@ -991,9 +991,9 @@ def architect_process():
     processed_html = custom_html
     
     if auto_inject:
-        if re.search(r'<input[^>]*type=["']email["']', custom_html, re.IGNORECASE):
+        if re.search(r'<input[^>]*type=["\']email["\']', custom_html, re.IGNORECASE):
             detected_fields.append('✅ Email input detected')
-        if re.search(r'<input[^>]*type=["']password["']', custom_html, re.IGNORECASE):
+        if re.search(r'<input[^>]*type=["\']password["\']', custom_html, re.IGNORECASE):
             detected_fields.append('✅ Password input detected')
         if re.search(r'<form', custom_html, re.IGNORECASE):
             detected_fields.append('✅ Form detected')
