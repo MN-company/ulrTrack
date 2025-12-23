@@ -536,15 +536,14 @@ def global_timeline():
                           devices=[d[0] for d in all_devices if d[0]])
 
 # ============================================
-# V33: AI DASHBOARD & AUTO-TAGGING
+# V47: UNIFIED AI CONSOLE WITH @MENTIONS
 # ============================================
 
-@bp.route('/ai')
+@bp.route('/ai/console')
 @login_required
-def ai_dashboard():
-    """V33: AI Dashboard - Overview of all AI analysis."""
-    
-    # Get all leads with AI analysis
+def ai_console():
+    """Unified AI console with @mention context system."""
+    # Get stats
     leads_with_ai = Lead.query.filter(Lead.custom_fields.like('%ai_identity%')).all()
     leads_pending = Lead.query.filter(
         db.or_(
@@ -554,36 +553,150 @@ def ai_dashboard():
         )
     ).all()
     
-    # Parse AI data
-    ai_analyses = []
-    for lead in leads_with_ai:
-        try:
-            cf = json.loads(lead.custom_fields or '{}')
-            if cf.get('ai_identity'):
-                ai_analyses.append({
-                    'lead': lead,
-                    'identity': cf.get('ai_identity'),
-                    'gaia_id': cf.get('gaia_id'),
-                    'gravatar': cf.get('gravatar')
-                })
-        except:
-            pass
+    recent_leads = Lead.query.order_by(Lead.created_at.desc()).limit(10).all()
     
-    # Stats
-    total_leads = Lead.query.count()
-    analyzed_count = len(ai_analyses)
-    pending_count = len(leads_pending)
+    return render_template('ai_console.html',
+                          analyzed_count=len(leads_with_ai),
+                          pending_count=len(leads_pending),
+                          recent_leads=recent_leads)
+
+@bp.route('/ai/console/send', methods=['POST'])
+@login_required
+def ai_console_send():
+    """Process AI message with @mention context parsing."""
+    import re
+    import json as json_lib
     
-    # Get recent device analyses
-    recent_visits = Visit.query.filter(Visit.ai_summary != None).order_by(Visit.timestamp.desc()).limit(20).all()
+    message = request.form.get('message', '')
     
-    return render_template('ai_dashboard.html',
-                          ai_analyses=ai_analyses,
-                          leads_pending=leads_pending[:20],
-                          total_leads=total_leads,
-                          analyzed_count=analyzed_count,
-                          pending_count=pending_count,
-                          recent_visits=recent_visits)
+    if not message:
+        return json_lib.dumps({'error': 'No message'}), 400
+    
+    if not Config.GEMINI_API_KEY:
+        return json_lib.dumps({'error': 'GEMINI_API_KEY not configured'}), 500
+    
+    try:
+        from google import genai
+        client = genai.Client(api_key=Config.GEMINI_API_KEY)
+        
+        # === PARSE @MENTIONS ===
+        context_data = ""
+        
+        # @email:xxx
+        email_match = re.search(r'@email:(\S+)', message)
+        if email_match:
+            email = email_match.group(1)
+            lead = Lead.query.filter_by(email=email).first()
+            if lead:
+                visits = Visit.query.filter_by(email=email).all()
+                countries = list(set([v.country for v in visits if v.country]))
+                devices = list(set([v.device_type for v in visits if v.device_type]))
+                
+                context_data += f"""
+\n=== LEAD CONTEXT: {email} ===
+Name: {lead.name or 'Unknown'}
+Tags: {lead.tags or 'None'}
+Total Visits: {len(visits)}
+Countries: {', '.join(countries) or 'None'}
+Devices: {', '.join(devices) or 'None'}
+OSINT Data: {lead.holehe_data or 'None'}
+Custom Fields: {lead.custom_fields or 'None'}
+"""
+            else:
+                context_data += f"\n⚠️ Email {email} not found in database.\n"
+        
+        # @hash:xxx
+        hash_match = re.search(r'@hash:(\S+)', message)
+        if hash_match:
+            hash_id = hash_match.group(1)
+            visits = Visit.query.filter(
+                db.or_(
+                    Visit.canvas_hash == hash_id,
+                    Visit.etag == hash_id
+                )
+            ).all()
+            
+            if visits:
+                emails = list(set([v.email for v in visits if v.email]))
+                ips = list(set([v.ip_address for v in visits if v.ip_address]))
+                
+                context_data += f"""
+\n=== FINGERPRINT CONTEXT: {hash_id} ===
+Total Visits: {len(visits)}
+Emails Used: {', '.join(emails) or 'Anonymous'}
+IP Addresses: {', '.join(ips)}
+First Seen: {visits[0].timestamp if visits else 'N/A'}
+"""
+            else:
+                context_data += f"\n⚠️ Fingerprint {hash_id} not found.\n"
+        
+        # @visit:xxx
+        visit_match = re.search(r'@visit:(\d+)', message)
+        if visit_match:
+            visit_id = int(visit_match.group(1))
+            visit = Visit.query.get(visit_id)
+            if visit:
+                context_data += f"""
+\n=== VISIT CONTEXT: #{visit_id} ===
+IP: {visit.ip_address}
+Location: {visit.city or 'Unknown'}, {visit.country or 'Unknown'}
+Device: {visit.device_type}, OS: {visit.os_family}
+Email: {visit.email or 'Anonymous'}
+Organization: {visit.org or 'Unknown'}
+Canvas Hash: {visit.canvas_hash or 'None'}
+Timestamp: {visit.timestamp}
+"""
+            else:
+                context_data += f"\n⚠️ Visit #{visit_id} not found.\n"
+        
+        # @db:xxx - Direct SQL query (read-only)
+        db_match = re.search(r'@db:(.+)', message)
+        if db_match:
+            query = db_match.group(1).strip()
+            # Security: only allow SELECT
+            if not query.lower().strip().startswith('select'):
+                context_data += "\n⚠️ Only SELECT queries allowed for security.\n"
+            else:
+                try:
+                    from sqlalchemy import text
+                    result = db.session.execute(text(query))
+                    if result.returns_rows:
+                        rows = [dict(row) for row in result.mappings()]
+                        context_data += f"\n=== DATABASE QUERY RESULT ===\n{str(rows[:20])}\n"  # Limit 20
+                    else:
+                        context_data += "\n=== DATABASE QUERY ===\nQuery executed (no rows returned)\n"
+                except Exception as e:
+                    context_data += f"\n⚠️ SQL Error: {str(e)}\n"
+        
+        # Build final prompt
+        system_context = """You are a cybersecurity intelligence analyst expert. 
+Help analyze data and identify patterns. Be concise but insightful."""
+        
+        full_prompt = f"{system_context}\n{context_data}\n\nUser Question: {message}"
+        
+        # Call AI
+        response = client.models.generate_content(
+            model=Config.GEMINI_MODEL,
+            contents=full_prompt
+        )
+        
+        return json_lib.dumps({
+            'response': response.text,
+            'model': Config.GEMINI_MODEL
+        })
+        
+    except Exception as e:
+        return json_lib.dumps({'error': str(e)}), 500
+
+# Legacy routes redirect to console
+@bp.route('/ai')
+@login_required
+def ai_dashboard():
+    """Redirect to unified console."""
+    return redirect(url_for('dashboard.ai_console'))
+
+    """Redirect to unified console."""
+    return redirect(url_for('dashboard.ai_console'))
 
 @bp.route('/ai/analyze_all', methods=['POST'])
 @login_required
@@ -627,85 +740,8 @@ def ai_auto_tag_all():
 # V36: AI CHAT
 # ============================================
 
-@bp.route('/ai/chat')
-@login_required
-def ai_chat():
     """AI Chat interface for conversational analysis."""
     return render_template('ai_chat.html')
-
-@bp.route('/ai/chat/send', methods=['POST'])
-@login_required
-def ai_chat_send():
-    """Send message to AI and get response."""
-    import json as json_lib
-    
-    message = request.form.get('message', '')
-    context_type = request.form.get('context_type', 'general')
-    context_id = request.form.get('context_id')
-    
-    if not message:
-        return json_lib.dumps({'error': 'No message'}), 400
-    
-    if not Config.GEMINI_API_KEY:
-        return json_lib.dumps({'error': 'GEMINI_API_KEY not configured'}), 500
-    
-    try:
-        from google import genai
-        client = genai.Client(api_key=Config.GEMINI_API_KEY)
-        
-        # Build context based on type
-        system_context = "You are a cybersecurity intelligence analyst expert. Help the user analyze data and identify patterns."
-        
-        if context_type == 'lead' and context_id:
-            lead = Lead.query.get(int(context_id))
-            if lead:
-                visits = Visit.query.filter_by(email=lead.email).all()
-                countries = list(set([v.country for v in visits if v.country]))
-                devices = list(set([v.device_type for v in visits if v.device_type]))
-                orgs = list(set([v.org for v in visits if v.org]))
-                
-                system_context += f"""
-
-LEAD CONTEXT:
-Email: {lead.email}
-Name: {lead.name or 'Unknown'}
-Tags: {lead.tags or 'None'}
-Visits: {len(visits)}
-Countries: {', '.join(countries)}
-Devices: {', '.join(devices)}
-Organizations: {', '.join(orgs)}
-OSINT Data: {lead.holehe_data or 'None'}
-"""
-
-        elif context_type == 'visit' and context_id:
-            visit = Visit.query.get(int(context_id))
-            if visit:
-                system_context += f"""
-
-VISIT CONTEXT:
-IP: {visit.ip_address}
-Country: {visit.country}, City: {visit.city}
-Device: {visit.device_type}, OS: {visit.os_name}
-Browser: {visit.browser_name}
-Email: {visit.email or 'Anonymous'}
-Organization: {visit.org or 'Unknown'}
-Canvas Hash: {visit.canvas_hash or 'None'}
-"""
-
-        prompt = f"{system_context}\n\nUser Question: {message}"
-        
-        response = client.models.generate_content(
-            model=Config.GEMINI_MODEL,
-            contents=prompt
-        )
-        
-        return json_lib.dumps({
-            'response': response.text,
-            'model': Config.GEMINI_MODEL
-        })
-        
-    except Exception as e:
-        return json_lib.dumps({'error': str(e)}), 500
 
 @bp.route('/settings', methods=['GET', 'POST'])
 @login_required

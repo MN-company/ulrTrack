@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="display: grid; grid-template-columns: 300px 1fr; gap: 20px; height: calc(100vh - 150px);">
+    <!-- Left Sidebar: Context & Stats -->
+    <div style="display: flex; flex-direction: column; gap: 15px;">
+        <!-- Stats Overview -->
+        <div class="card">
+            <h5><i class="fas fa-chart-bar"></i> AI Stats</h5>
+            <div style="margin-top: 15px;">
+                <div style="margin-bottom: 10px;">
+                    <span style="color: var(--text-sec); font-size: 0.85rem;">Leads Analyzed</span>
+                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent);">{{ analyzed_count }}</div>
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <span style="color: var(--text-sec); font-size: 0.85rem;">Pending</span>
+                    <div style="font-size: 1.5rem; font-weight: 700;">{{ pending_count }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Context Buttons -->
+        <div class="card">
+            <h5><i class="fas fa-at"></i> Quick Context</h5>
+            <p style="color: var(--text-sec); font-size: 0.85rem; margin-bottom: 10px;">
+                Usa @ nel messaggio per caricare contesto:
+            </p>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <button class="btn-outline btn-sm" onclick="insertContext('@email:')">
+                    <i class="fas fa-envelope"></i> @email
+                </button>
+                <button class="btn-outline btn-sm" onclick="insertContext('@hash:')">
+                    <i class="fas fa-fingerprint"></i> @hash
+                </button>
+                <button class="btn-outline btn-sm" onclick="insertContext('@visit:')">
+                    <i class="fas fa-eye"></i> @visit
+                </button>
+                <button class="btn-outline btn-sm" onclick="insertContext('@db:SELECT * FROM lead LIMIT 5')">
+                    <i class="fas fa-database"></i> @db
+                </button>
+            </div>
+        </div>
+
+        <!-- Recent Leads -->
+        <div class="card" style="flex: 1; overflow-y: auto;">
+            <h5><i class="fas fa-users"></i> Recent Leads</h5>
+            <div style="margin-top: 10px;">
+                {% for lead in recent_leads[:5] %}
+                <div style="padding: 8px; border-bottom: 1px solid var(--border); cursor: pointer;"
+                    onclick="insertContext('@email:{{ lead.email }}')">
+                    <div style="font-size: 0.9rem; color: var(--text);">{{ lead.email }}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-sec);">
+                        {{ lead.created_at.strftime('%d/%m %H:%M') }}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Chat Interface -->
+    <div class="card" style="display: flex; flex-direction: column;">
+        <div
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--border);">
+            <h2 style="margin: 0;"><i class="fas fa-robot"></i> AI Intelligence Console</h2>
+            <div>
+                <button class="btn-outline btn-sm" onclick="clearChat()">
+                    <i class="fas fa-eraser"></i> Clear
+                </button>
+            </div>
+        </div>
+
+        <!-- Messages -->
+        <div id="chatMessages"
+            style="flex: 1; overflow-y: auto; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px; margin-bottom: 15px;">
+            <div class="message ai">
+                <div class="message-avatar"><i class="fas fa-robot"></i></div>
+                <div class="message-content">
+                    <strong>Ciao! Sono l'AI Intelligence Console.</strong><br><br>
+                    Posso aiutarti ad analizzare lead, visit e pattern. Usa i comandi @mention per dare contesto:
+                    <ul style="margin: 10px 0; padding-left: 20px;">
+                        <li><code>@email:user@example.com</code> - Carica dati del lead</li>
+                        <li><code>@hash:abc123</code> - Trova visit con quel fingerprint</li>
+                        <li><code>@visit:42</code> - Analizza visit specifica</li>
+                        <li><code>@db:SELECT...</code> - Query diretta (read-only)</li>
+                    </ul>
+                    Cosa vuoi analizzare?
+                </div>
+            </div>
+        </div>
+
+        <!-- Input -->
+        <form id="chatForm" style="display: flex; gap: 10px;">
+            <input type="text" id="messageInput" placeholder="Scrivi un messaggio... usa @email: @hash: @visit: @db:"
+                style="flex: 1;" autocomplete="off">
+            <button type="submit" class="btn">
+                <i class="fas fa-paper-plane"></i> Invia
+            </button>
+        </form>
+    </div>
+</div>
+
+<style>
+    .message {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 20px;
+        animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .message-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+
+    .message.ai .message-avatar {
+        background: linear-gradient(135deg, var(--accent), #00cc7d);
+        color: #000;
+    }
+
+    .message.user .message-avatar {
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--text-sec);
+    }
+
+    .message-content {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        padding: 12px 16px;
+        max-width: 80%;
+        line-height: 1.5;
+    }
+
+    .message.user {
+        flex-direction: row-reverse;
+    }
+
+    .message.user .message-content {
+        background: rgba(0, 255, 157, 0.1);
+        border: 1px solid rgba(0, 255, 157, 0.2);
+    }
+
+    .message-content code {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 0.9em;
+    }
+
+    .message-content ul {
+        margin: 8px 0;
+    }
+
+    .typing-indicator {
+        display: flex;
+        gap: 4px;
+        padding: 8px;
+    }
+
+    .typing-indicator span {
+        width: 8px;
+        height: 8px;
+        background: var(--accent);
+        border-radius: 50%;
+        animation: bounce 1.4s infinite ease-in-out;
+    }
+
+    .typing-indicator span:nth-child(1) {
+        animation-delay: 0s;
+    }
+
+    .typing-indicator span:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+
+    .typing-indicator span:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+
+    @keyframes bounce {
+
+        0%,
+        80%,
+        100% {
+            transform: scale(0);
+        }
+
+        40% {
+            transform: scale(1);
+        }
+    }
+</style>
+
+<script>
+    function insertContext(text) {
+        const input = document.getElementById('messageInput');
+        input.value = text;
+        input.focus();
+    }
+
+    function clearChat() {
+        const messages = document.getElementById('chatMessages');
+        messages.innerHTML = `
+            <div class="message ai">
+                <div class="message-avatar"><i class="fas fa-robot"></i></div>
+                <div class="message-content">Chat cleared. Come posso aiutarti?</div>
+            </div>
+        `;
+    }
+
+    document.getElementById('chatForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const input = document.getElementById('messageInput');
+        const messages = document.getElementById('chatMessages');
+        const message = input.value.trim();
+
+        if (!message) return;
+
+        // Add user message
+        messages.innerHTML += `
+            <div class="message user">
+                <div class="message-avatar"><i class="fas fa-user"></i></div>
+                <div class="message-content">${escapeHtml(message)}</div>
+            </div>
+        `;
+
+        input.value = '';
+
+        // Add typing indicator
+        const typingId = 'typing-' + Date.now();
+        messages.innerHTML += `
+            <div class="message ai" id="${typingId}">
+                <div class="message-avatar"><i class="fas fa-robot"></i></div>
+                <div class="message-content">
+                    <div class="typing-indicator">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+            </div>
+        `;
+        messages.scrollTop = messages.scrollHeight;
+
+        // Send to server
+        try {
+            const formData = new FormData();
+            formData.append('message', message);
+
+            const response = await fetch('/dashboard/ai/console/send', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            // Remove typing
+            document.getElementById(typingId).remove();
+
+            if (data.error) {
+                messages.innerHTML += `
+                    <div class="message ai">
+                        <div class="message-avatar"><i class="fas fa-robot"></i></div>
+                        <div class="message-content" style="color: var(--danger);">
+                            ❌ Errore: ${escapeHtml(data.error)}
+                        </div>
+                    </div>
+                `;
+            } else {
+                messages.innerHTML += `
+                    <div class="message ai">
+                        <div class="message-avatar"><i class="fas fa-robot"></i></div>
+                        <div class="message-content">${formatResponse(data.response)}</div>
+                    </div>
+                `;
+            }
+        } catch (err) {
+            document.getElementById(typingId).remove();
+            messages.innerHTML += `
+                <div class="message ai">
+                    <div class="message-avatar"><i class="fas fa-robot"></i></div>
+                    <div class="message-content" style="color: var(--danger);">
+                        ❌ Connection error: ${err.message}
+                    </div>
+                </div>
+            `;
+        }
+
+        messages.scrollTop = messages.scrollHeight;
+    });
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function formatResponse(text) {
+        return text
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/`([^`]+)`/g, '<code>$1</code>')
+            .replace(/```([\s\S]*?)```/g, '<pre>$1</pre>')
+            .replace(/\n/g, '<br>');
+    }
+</script>
+{% endblock %}
