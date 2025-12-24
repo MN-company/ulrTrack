@@ -5,7 +5,7 @@ Flask-WTF
 Werkzeug==3.0.1
 email-validator==2.1.0.post1
 requests==2.31.0
-SQLAlchemy==2.0.25
+SQLAlchemy>=2.0.25
 gunicorn==21.2.0
 user-agents==2.2.0
 fpdf
