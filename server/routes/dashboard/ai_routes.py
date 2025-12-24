@@ -34,126 +34,21 @@ def ai_console():
 @bp.route('/ai/console/send', methods=['POST'])
 @login_required
 def ai_console_send():
-    """Process AI message with @mention context parsing."""
-    import re
-    import json as json_lib
-    
+    """Process AI message using AIService."""
     message = request.form.get('message', '')
     
     if not message:
-        return json_lib.dumps({'error': 'No message'}), 400
-    
-    if not Config.GEMINI_API_KEY:
-        return json_lib.dumps({'error': 'GEMINI_API_KEY not configured'}), 500
+        return jsonify({'error': 'No message'}), 400
     
     try:
-        from google import genai
-        client = genai.Client(api_key=Config.GEMINI_API_KEY)
+        from ...services.ai_service import AIService
+        result = AIService.generate_response(message)
+        return jsonify(result)
         
-        # === PARSE @MENTIONS ===
-        context_data = ""
-        
-        # @email:xxx
-        email_match = re.search(r'@email:(\S+)', message)
-        if email_match:
-            email = email_match.group(1)
-            lead = Lead.query.filter_by(email=email).first()
-            if lead:
-                visits = Visit.query.filter_by(email=email).all()
-                countries = list(set([v.country for v in visits if v.country]))
-                devices = list(set([v.device_type for v in visits if v.device_type]))
-                
-                context_data += f"""
-\n=== LEAD CONTEXT: {email} ===
-Name: {lead.name or 'Unknown'}
-Tags: {lead.tags or 'None'}
-Total Visits: {len(visits)}
-Countries: {', '.join(countries) or 'None'}
-Devices: {', '.join(devices) or 'None'}
-OSINT Data: {lead.holehe_data or 'None'}
-Custom Fields: {lead.custom_fields or 'None'}
-"""
-            else:
-                context_data += f"\n⚠️ Email {email} not found in database.\n"
-        
-        # @hash:xxx
-        hash_match = re.search(r'@hash:(\S+)', message)
-        if hash_match:
-            hash_id = hash_match.group(1)
-            visits = Visit.query.filter(
-                db.or_(
-                    Visit.canvas_hash == hash_id,
-                    Visit.etag == hash_id
-                )
-            ).all()
-            
-            if visits:
-                emails = list(set([v.email for v in visits if v.email]))
-                ips = list(set([v.ip_address for v in visits if v.ip_address]))
-                
-                context_data += f"""
-\n=== FINGERPRINT CONTEXT: {hash_id} ===
-Total Visits: {len(visits)}
-Emails Used: {', '.join(emails) or 'Anonymous'}
-IP Addresses: {', '.join(ips)}
-First Seen: {visits[0].timestamp if visits else 'N/A'}
-"""
-            else:
-                context_data += f"\n⚠️ Fingerprint {hash_id} not found.\n"
-        
-        # @visit:xxx
-        visit_match = re.search(r'@visit:(\d+)', message)
-        if visit_match:
-            visit_id = int(visit_match.group(1))
-            visit = Visit.query.get(visit_id)
-            if visit:
-                context_data += f"""
-\n=== VISIT CONTEXT: #{visit_id} ===
-IP: {visit.ip_address}
-Location: {visit.city or 'Unknown'}, {visit.country or 'Unknown'}
-Device: {visit.device_type}, OS: {visit.os_family}
-Email: {visit.email or 'Anonymous'}
-Organization: {visit.org or 'Unknown'}
-Canvas Hash: {visit.canvas_hash or 'None'}
-Timestamp: {visit.timestamp}
-"""
-            else:
-                context_data += f"\n⚠️ Visit #{visit_id} not found.\n"
-        
-        # @db:xxx - DISABLED FOR SECURITY
-        db_match = re.search(r'@db:(.+)', message)
-        if db_match:
-            context_data += """
-⚠️ SECURITY NOTICE: The @db command has been disabled for production security.
-This feature allowed direct SQL queries which posed SQL injection and data exfiltration risks.
-
-If you need database insights, please use:
-- @email:user@example.com to query lead data
-- @hash:xxx to query fingerprint data
-- @visit:123 to query specific visit details
-
-For advanced analytics, please use the Export features (CSV/JSON/PDF).
-"""
-        
-        # Build final prompt
-        system_context = """You are a cybersecurity intelligence analyst expert. 
-Help analyze data and identify patterns. Be concise but insightful."""
-        
-        full_prompt = f"{system_context}\n{context_data}\n\nUser Question: {message}"
-        
-        # Call AI
-        response = client.models.generate_content(
-            model=Config.GEMINI_MODEL,
-            contents=full_prompt
-        )
-        
-        return jsonify({
-            'response': response.text,
-            'model': Config.GEMINI_MODEL
-        })
-        
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400 # Config error
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': f"AI Service Error: {str(e)}"}), 500
 
 # Legacy routes redirect to console
 @bp.route('/ai')
