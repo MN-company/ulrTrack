@@ -105,11 +105,28 @@ def create_app():
             pass  # Column already exists
     
     # V51: User table migration
+    # V51: User table migration (Robust)
     with app.app_context():
         try:
             from .models import User
             db.create_all()  # Creates User table if it doesn't exist
-            print("✅ User table created/verified")
+            
+            # Add missing columns for existing tables
+            from sqlalchemy import text, inspect
+            inspector = inspect(db.engine)
+            if 'user' in inspector.get_table_names():
+                columns = [c['name'] for c in inspector.get_columns('user')]
+                with db.engine.connect() as conn:
+                    if 'totp_secret' not in columns:
+                        conn.execute(text("ALTER TABLE user ADD COLUMN totp_secret VARCHAR(32)"))
+                    if 'totp_enabled' not in columns:
+                        conn.execute(text("ALTER TABLE user ADD COLUMN totp_enabled BOOLEAN DEFAULT 0"))
+                    if 'backup_codes' not in columns:
+                        conn.execute(text("ALTER TABLE user ADD COLUMN backup_codes TEXT"))
+                    if 'passkey_credentials' not in columns:
+                        conn.execute(text("ALTER TABLE user ADD COLUMN passkey_credentials TEXT"))
+                    conn.commit()
+            print("✅ User table verified")
         except Exception as e:
             print(f"⚠️  User table migration error: {e}")
     
