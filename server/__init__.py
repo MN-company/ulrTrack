@@ -3,17 +3,26 @@ from .config import Config
 from .extensions import db, login_manager, limiter, csrf
 from .worker import start_worker
 import os
+from datetime import timedelta # Added for SESSION_COOKIE_LIFETIME
 
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # Init Extensions
+    # Security Headers & Session Hardening
+    app.config.update(
+        SESSION_COOKIE_SECURE=True,  # Requires HTTPS
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE='Lax', # Strict can break OAuth/external redirects, Lax is safer for general use
+        PERMANENT_SESSION_LIFETIME=timedelta(hours=24)
+    )
+
+    # Initialize extensions
     db.init_app(app)
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
     limiter.init_app(app)
-    csrf.init_app(app)
+    csrf.init_app(app) # Enable CSRF Protection
 
     # V29: Markdown Support for AI
     @app.template_filter('markdown')
@@ -88,11 +97,12 @@ def create_app():
         
         # V39 Session Detector (Fingerprint.js Pro)
         try:
+            from sqlalchemy import text
             db.session.execute(text("ALTER TABLE visit ADD COLUMN fpjs_confidence FLOAT"))
             db.session.commit()
             print("✅ Added Fingerprint.js Pro columns to Visit table")
         except Exception as e:
-            print(f"⚠️  Fingerprint.js columns already exist or error: {e}")
+            pass  # Column already exists
     
     # V51: User table migration
     with app.app_context():

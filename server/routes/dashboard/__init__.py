@@ -13,6 +13,7 @@ from .architect import bp as architect_bp
 from .exports import bp as exports_bp
 from .stats import bp as stats_bp
 from .security import bp as security_bp
+from .passkey import bp as passkey_bp
 
 # Create main dashboard blueprint
 bp = Blueprint('dashboard', __name__, url_prefix='/dashboard')
@@ -25,6 +26,7 @@ bp.register_blueprint(architect_bp)
 bp.register_blueprint(exports_bp)
 bp.register_blueprint(stats_bp)
 bp.register_blueprint(security_bp)
+bp.register_blueprint(passkey_bp)
 
 # Add shared template filter
 def md5_filter(s):

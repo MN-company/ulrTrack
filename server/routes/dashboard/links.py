@@ -15,7 +15,6 @@ bp = Blueprint('dashboard_links', __name__)
 @bp.route('')
 @login_required
 def dashboard_home():
-    print(f"DEBUG: Accessing Dashboard Home BP. User: {current_user.id}")
     try:
         links = Link.query.order_by(Link.created_at.desc()).all()
         total_clicks = Visit.query.count()

@@ -1,17 +1,25 @@
-from flask import Blueprint, send_file, make_response
+```python
+from flask import Blueprint, send_file, make_response, request, jsonify, render_template
 from flask_login import login_required
 import json
 import csv
 from io import BytesIO, StringIO
 from datetime import datetime
 
-from ...models import Link, Visit
+from ...models import Link, Visit, Lead
 from ...config import Config
+from ...extensions import db, limiter
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
 
 bp = Blueprint('dashboard_exports', __name__)
 
 @bp.route('/export/<slug>/json')
 @login_required
+@limiter.limit("5 per minute")
 def export_json(slug):
     """Export link stats as JSON."""
     link = Link.query.filter_by(slug=slug).first_or_404()
@@ -161,6 +169,7 @@ def architect_save():
 
 @bp.route('/export/<slug>/csv')
 @login_required
+@limiter.limit("5 per minute")
 def export_csv(slug):
     """Export link stats as CSV (Google Sheets compatible)."""
     import csv
@@ -196,6 +205,7 @@ def export_csv(slug):
 
 @bp.route('/export/<slug>/pdf')
 @login_required
+@limiter.limit("5 per minute")
 def export_pdf(slug):
     """Export link stats as PDF (HTML-based, print-ready)."""
     link = Link.query.filter_by(slug=slug).first_or_404()

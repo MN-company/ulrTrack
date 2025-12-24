@@ -46,7 +46,13 @@ def create_admin():
         else:
             # Create new admin
             print("👤 Create Admin User")
-            password = getpass.getpass("Enter admin password: ")
+            while True:
+                password = getpass.getpass("Enter admin password (min 12 chars): ")
+                if len(password) < 12:
+                    print("❌ Password must be at least 12 characters long.")
+                    continue
+                break
+                
             password_confirm = getpass.getpass("Confirm password: ")
             
             if password != password_confirm:
