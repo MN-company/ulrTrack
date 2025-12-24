@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block breadcrumb %}Campaigns / Intelligence Links{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <span class="card-title"><i class="fa-solid fa-link"></i> Active Campaigns</span>
+        <a href="{{ url_for('dashboard.dashboard_links.create_link') }}" class="btn btn-primary">
+            <i class="fa-solid fa-plus"></i> New Campaign
+        </a>
+    </div>
+
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Slug / Target</th>
+                <th>Defenses</th>
+                <th>Intercepts</th>
+                <th>Last Active</th>
+                <th style="text-align: right;">Controls</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for link in links %}
+            <tr>
+                <td>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <span class="text-accent"
+                            style="font-weight: 600; font-family: 'JetBrains Mono', monospace;">/{{ link.slug }}</span>
+                        <a href="{{ url_for('public.redirect_link', slug=link.slug) }}" target="_blank"
+                            style="color: var(--text-muted); font-size: 0.8rem;">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                        </a>
+                    </div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+                        &rarr; {{ link.destination[:40] }}...
+                    </div>
+                </td>
+                <td>
+                    <div style="display: flex; gap: 0.25rem;">
+                        {% if link.enable_captcha %}
+                        <span class="badge badge-warning" title="Captcha Enabled">Bot</span>
+                        {% endif %}
+                        {% if link.block_vpn %}
+                        <span class="badge badge-danger" title="VPN Blocking Active">VPN</span>
+                        {% endif %}
+                        {% if link.require_email %}
+                        <span class="badge badge-blue">Gate</span>
+                        {% endif %}
+                        {% if not link.enable_captcha and not link.block_vpn and not link.require_email %}
+                        <span class="badge badge-success">Open</span>
+                        {% endif %}
+                    </div>
+                </td>
+                <td>
+                    <div class="stat-value" style="font-size: 1.25rem;">{{ link.visits|length }}</div>
+                </td>
+                <td style="font-size: 0.85rem; color: var(--text-secondary);">
+                    {{ link.created_at.strftime('%Y-%m-%d') }}
+                </td>
+                <td style="text-align: right;">
+                    <div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+                        <a href="{{ url_for('dashboard.dashboard_stats.stats', slug=link.slug) }}" class="btn btn-ghost"
+                            style="padding: 0.4rem;">
+                            <i class="fa-solid fa-chart-pie"></i> Intel
+                        </a>
+                        <a href="{{ url_for('dashboard.dashboard_links.edit_link', link_id=link.id) }}"
+                            class="btn btn-ghost" style="padding: 0.4rem;">
+                            <i class="fa-solid fa-sliders"></i> Edit
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
