@@ -12,6 +12,28 @@
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
+    <!-- Global CSRF Protection -->
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <script>
+        // Blazing Fast CSRF Injection for all Fetch requests
+        const originalFetch = window.fetch;
+        window.fetch = async (...args) => {
+            let [resource, config] = args;
+            config = config || {};
+            config.headers = config.headers || {};
+
+            // Add CSRF token if not present
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            if (csrfToken && !config.headers['X-CSRFToken']) {
+                config.headers['X-CSRFToken'] = csrfToken;
+                // Also add X-Requested-With for Flask security headers checks
+                config.headers['X-Requested-With'] = 'XMLHttpRequest';
+            }
+
+            return originalFetch(resource, config);
+        };
+    </script>
+
     <style>
         :root {
             /* High Contrast Cyberpunk Palette */

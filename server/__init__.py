@@ -101,8 +101,23 @@ def create_app():
             db.session.execute(text("ALTER TABLE visit ADD COLUMN fpjs_confidence FLOAT"))
             db.session.commit()
             print("✅ Added Fingerprint.js Pro columns to Visit table")
+        try:
+            from sqlalchemy import text
+            db.session.execute(text("ALTER TABLE visit ADD COLUMN fpjs_confidence FLOAT"))
+            db.session.commit()
+            print("✅ Added Fingerprint.js Pro columns to Visit table")
         except Exception as e:
             pass  # Column already exists
+
+        # V55: Performance Indexes (Blazing Fast Optimization)
+        try:
+            db.session.execute(text("CREATE INDEX IF NOT EXISTS idx_visit_link_id ON visit (link_id)"))
+            db.session.execute(text("CREATE INDEX IF NOT EXISTS idx_visit_created_at ON visit (created_at)"))
+            db.session.execute(text("CREATE INDEX IF NOT EXISTS idx_visit_ip ON visit (ip_address)"))
+            db.session.commit()
+            print("✅ Performance indexes applied")
+        except Exception as e:
+            print(f"⚠️ Index creation warning: {e}")
     
     # V51: User table migration
     # V51: User table migration (Robust)
