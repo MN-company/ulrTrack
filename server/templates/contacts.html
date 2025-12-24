@@ -17,6 +17,8 @@
 <!-- Add Target -->
 <div class="card" style="margin-bottom: 30px; border: 1px dashed var(--border-color);">
     <form method="POST" class="flex-row" style="align-items: flex-end; gap:15px;">
+
+        {{ csrf_token() }}
         <div style="flex:1">
             <label style="font-size:0.75rem; color:var(--accent); text-transform:uppercase; font-weight:700;">Target
                 Email</label>
@@ -101,6 +103,8 @@
                     <div class="flex-row" style="justify-content:flex-end; gap:8px;">
                         <!-- Quick Actions -->
                         <form action="/dashboard/analyze_email" method="POST" style="display:inline;">
+
+                            {{ csrf_token() }}
                             <input type="hidden" name="email" value="{{ lead.email }}">
                             <button type="submit" class="btn-outline btn-sm" title="Run Holehe Scans">
                                 <i class="fas fa-satellite-dish"></i>
@@ -109,6 +113,8 @@
 
                         <!-- Blackbird -->
                         <form action="/dashboard/lead/{{ lead.id }}/blackbird" method="POST" style="display:inline;">
+
+                            {{ csrf_token() }}
                             <button type="submit" class="btn-outline btn-sm" title="Run Blackbird Scan">
                                 <i class="fas fa-crow"></i>
                             </button>
@@ -131,6 +137,8 @@
                 <td colspan="3" style="padding:15px;">
                     <form action="/dashboard/lead/{{ lead.id }}/ai_custom" method="POST" class="flex-row"
                         style="gap:10px; align-items:flex-start;">
+
+                        {{ csrf_token() }}
                         <div style="flex:1;">
                             <label style="font-size:0.7rem; color:var(--accent); font-weight:700;">CUSTOM AI PROMPT
                                 (Bypass Filters)</label>

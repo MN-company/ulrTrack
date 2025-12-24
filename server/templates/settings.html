@@ -8,6 +8,9 @@
     </p>
 
     <form method="POST">
+
+
+        {{ csrf_token() }}
         <div class="form-group">
             <label>API Key (Admin Password)</label>
             <div style="display: flex; gap: 10px;">

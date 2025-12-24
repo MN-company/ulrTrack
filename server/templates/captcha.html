@@ -9,6 +9,9 @@
         </p>
 
         <form method="POST" action="/verify_captcha">
+
+
+            {{ csrf_token() }}
             <input type="hidden" name="slug" value="{{ slug }}">
             <!-- V16: Pass visit_id for tracking -->
             <input type="hidden" name="visit_id" value="{{ visit_id }}">

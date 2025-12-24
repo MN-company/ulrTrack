@@ -142,6 +142,8 @@
                     <div style="display:flex; align-items:center; gap:8px;">
                         <span class="text-accent" style="font-weight:600;">{{ v.email }}</span>
                         <form action="/dashboard/analyze_email" method="POST" target="_blank" style="margin:0;">
+
+                            {{ csrf_token() }}
                             <input type="hidden" name="email" value="{{ v.email }}">
                             <button type="submit" class="btn-sm" style="padding:2px 6px; font-size:0.7rem;"
                                 title="Run Holehe OSINT">

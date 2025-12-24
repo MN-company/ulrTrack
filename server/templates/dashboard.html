@@ -64,6 +64,8 @@
 <!-- Quick Create Bar -->
 <div class="card">
     <form method="POST" action="/dashboard/create" class="quick-create">
+
+        {{ csrf_token() }}
         <input type="url" name="destination" placeholder="Paste Target URL here..." required>
 
         <input type="text" name="slug" placeholder="Slug (Opt)">
@@ -160,6 +162,9 @@
 
                         <form method="POST" action="/dashboard/delete/{{ link.id }}"
                             onsubmit="return confirm('Delete?');" style="display:inline;">
+
+
+                            {{ csrf_token() }}
                             <button type="submit" class="btn-sm btn-danger"><i class="fas fa-trash"></i></button>
                         </form>
                     </div>

@@ -6,6 +6,9 @@
         <h2 style="margin-bottom: 20px; font-weight: 300;">ACCESS <span class="text-accent">TERMINAL</span></h2>
 
         <form method="POST" action="/login">
+
+
+            {{ csrf_token() }}
             <div style="margin-bottom: 20px;">
                 <input type="password" name="api_key" placeholder="Enter API Key" required
                     style="text-align: center; font-size: 1.1rem; letter-spacing: 2px;">

@@ -1,10 +1,14 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, datetime
+import json
 from flask_login import login_required
-from ..extensions import log_queue, db
-from ..models import Lead, Visit
+from ..extensions import log_queue, db, limiter, csrf
+from ..models import Lead, Visit, Link
 from ..config import Config
 
 bp = Blueprint('api', __name__, url_prefix='/api')
+
+# Exempt entire API blueprint from CSRF protection (used by JavaScript)
+csrf.exempt(bp)
 
 @bp.route('/beacon', methods=['POST'])
 def receive_beacon():
