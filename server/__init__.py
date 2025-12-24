@@ -84,10 +84,25 @@ def create_app():
             
             conn.commit()
             conn.close()
-        except Exception: pass
+        except Exception: pass # This catches errors in the sqlite3 operations
         
-        db.create_all()
-
+        # V39 Session Detector (Fingerprint.js Pro)
+        try:
+            db.session.execute(text("ALTER TABLE visit ADD COLUMN fpjs_confidence FLOAT"))
+            db.session.commit()
+            print("✅ Added Fingerprint.js Pro columns to Visit table")
+        except Exception as e:
+            print(f"⚠️  Fingerprint.js columns already exist or error: {e}")
+    
+    # V51: User table migration
+    with app.app_context():
+        try:
+            from .models import User
+            db.create_all()  # Creates User table if it doesn't exist
+            print("✅ User table created/verified")
+        except Exception as e:
+            print(f"⚠️  User table migration error: {e}")
+    
     # Register Blueprints
     from .routes import auth, api, public
     from .routes.dashboard import bp as dashboard_bp

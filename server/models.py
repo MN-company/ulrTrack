@@ -117,7 +117,10 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(200), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # 2FA/TOTP Authentication
+    # 2FA/TOTP Authentication (Optional)
     totp_secret = db.Column(db.String(32), nullable=True)  # Base32 encoded secret
     totp_enabled = db.Column(db.Boolean, default=False)
     backup_codes = db.Column(db.Text, nullable=True)  # JSON array of hashed backup codes
+    
+    # Passkey/WebAuthn (Optional)
+    passkey_credentials = db.Column(db.Text, nullable=True)  # JSON array of WebAuthn credentials
