@@ -7,10 +7,21 @@ import sys
 import os
 
 # Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add parent directory to path to allow importing server package
+# Correctly handles running from root or server/ dir
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, parent_dir)
 
-from server import create_app, db
-from server.models import User
+# Try relative import first (if package), then fallback to absolute
+try:
+    from server import create_app, db
+    from server.models import User
+except ImportError:
+    # If we are running inside server/, we might need to adjust
+    sys.path.insert(0, current_dir)
+    from server import create_app, db
+    from server.models import User
 from werkzeug.security import generate_password_hash
 import getpass
 
