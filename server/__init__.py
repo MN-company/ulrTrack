@@ -1,6 +1,6 @@
 from flask import Flask
 from .config import Config
-from .extensions import db, login_manager, limiter
+from .extensions import db, login_manager, limiter, csrf
 from .worker import start_worker
 import os
 
@@ -13,6 +13,7 @@ def create_app():
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
     limiter.init_app(app)
+    csrf.init_app(app)
 
     # V29: Markdown Support for AI
     @app.template_filter('markdown')
@@ -88,18 +89,26 @@ def create_app():
         db.create_all()
 
     # Register Blueprints
-    from .routes import auth, dashboard, api, public
+    from .routes import auth, api, public
+    from .routes.dashboard import bp as dashboard_bp
     
     app.register_blueprint(auth.bp)
-    app.register_blueprint(dashboard.bp)
+    app.register_blueprint(dashboard_bp)
     app.register_blueprint(api.bp)
     # Catch-all MUST be last
     app.register_blueprint(public.bp)
     
     # Global Filters/Headers
     @app.after_request
-    def remove_header(response):
-        del response.headers['Server']
+    def add_security_headers(response):
+        # Remove server fingerprint
+        response.headers.pop('Server', None)
+        # Add security headers
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['X-Frame-Options'] = 'DENY'
+        response.headers['X-XSS-Protection'] = '1; mode=block'
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+        response.headers['Content-Security-Policy'] = "default-src 'self' https://challenges.cloudflare.com; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: *; connect-src 'self'; frame-src https://challenges.cloudflare.com;"
         return response
 
     # Start Worker

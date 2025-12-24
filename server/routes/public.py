@@ -1,10 +1,11 @@
 from flask import Blueprint, request, render_template, abort, make_response, redirect, render_template_string
 from user_agents import parse
 from datetime import datetime
+from jinja2.sandbox import SandboxedEnvironment
 import hashlib
 
 from ..models import Link, Visit
-from ..extensions import db
+from ..extensions import db, limiter
 from ..utils import get_geo_data, is_bot_ua, verify_turnstile, get_reverse_dns, parse_referrer
 from ..config import Config
 
@@ -145,7 +146,11 @@ def redirect_to_url(slug):
         </script>
         """
         html_content = link.custom_html.replace('</body>', tracking_js + '</body>')
-        return render_template_string(html_content, destination=final_dest, visit_id=visit.id)
+        
+        # Security: Use Jinja2 Sandbox to prevent SSTI
+        sandbox = SandboxedEnvironment()
+        template = sandbox.from_string(html_content)
+        return template.render(destination=final_dest, visit_id=visit.id)
 
     # Success
     resp = make_response(render_template('loading.html', destination=final_dest, visit_id=visit.id, allow_no_js=link.allow_no_js, hide_nav=True))
@@ -157,6 +162,7 @@ def redirect_to_url(slug):
     return resp
 
 @bp.route('/verify_captcha', methods=['POST'])
+@limiter.limit("5 per minute")
 def verify_captcha():
     slug = request.form.get('slug')
     turnstile_token = request.form.get('cf-turnstile-response')
@@ -175,6 +181,7 @@ def verify_captcha():
                                site_key=Config.TURNSTILE_SITE_KEY, error="Verification Failed", hide_nav=True), 400
 
 @bp.route('/verify_password', methods=['POST'])
+@limiter.limit("5 per minute")
 def verify_password():
     slug = request.form.get('slug')
     password = request.form.get('password')
