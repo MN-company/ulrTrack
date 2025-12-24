@@ -110,10 +110,14 @@ class Visit(db.Model):
     # V39 Session Detector
     detected_sessions = db.Column(db.Text, nullable=True) # JSON list
 
-# Auth User Model
-class User(UserMixin):
-    def __init__(self, id):
-        self.id = id
-
-    def get_id(self):
-        return str(self.id)
+# V51: Database-backed User Model with 2FA
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(200), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # 2FA/TOTP Authentication
+    totp_secret = db.Column(db.String(32), nullable=True)  # Base32 encoded secret
+    totp_enabled = db.Column(db.Boolean, default=False)
+    backup_codes = db.Column(db.Text, nullable=True)  # JSON array of hashed backup codes
