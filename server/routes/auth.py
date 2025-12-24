@@ -13,7 +13,11 @@ bp = Blueprint('auth', __name__)
 @login_manager.user_loader
 def load_user(user_id):
     """Load user from database by ID."""
-    return User.query.get(int(user_id))
+    try:
+        if not user_id: return None
+        return User.query.get(int(user_id))
+    except (ValueError, TypeError):
+        return None
 
 @bp.route('/login', methods=['GET', 'POST'])
 @limiter.limit("10 per minute")
