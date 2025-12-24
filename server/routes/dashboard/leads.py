@@ -143,7 +143,8 @@ def qr_code_img(slug):
 def generate_dorks(lead_id):
     lead = Lead.query.get_or_404(lead_id)
     try:
-        dorks_text = ai.generate_dorks(lead.email)
+        from ...services.ai_service import AIService
+        dorks_text = AIService.generate_dorks(lead.email)
         
         # Use new generic dict accessor
         cf = lead.custom_fields_data

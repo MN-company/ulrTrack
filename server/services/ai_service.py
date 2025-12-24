@@ -91,33 +91,88 @@ Timestamp: {visit.timestamp}
         
         return context_data
 
+    client = None
+    mode = 'disabled'
+    genai_module = None
+
+    @classmethod
+    def initialize(cls):
+        """Initialize the AI Client with fallback strategy."""
+        if cls.client or cls.genai_module: return
+
+        api_key = Config.GEMINI_API_KEY
+        if not api_key:
+             print("AI Service: No API_KEY found.")
+             return
+
+        try:
+            # Strategy A: New SDK
+            from google import genai
+            try:
+                cls.client = genai.Client(api_key=api_key)
+                cls.mode = 'new_sdk'
+            except Exception:
+                raise ImportError("Fallback")
+        except ImportError:
+            try:
+                # Strategy B: Old SDK
+                import google.generativeai as genai_old
+                genai_old.configure(api_key=api_key)
+                cls.genai_module = genai_old
+                cls.mode = 'old_sdk'
+            except:
+                print("AI Service: CRITICAL - No GenAI libs.")
+
+    @classmethod
+    def generate(cls, prompt: str, model: str = None) -> str:
+        """Generic generation method with fallback."""
+        cls.initialize()
+        if cls.mode == 'disabled': return "AI Error: Not Configured"
+        
+        target_model = model or Config.GEMINI_MODEL
+        
+        try:
+            if cls.mode == 'new_sdk':
+                response = cls.client.models.generate_content(
+                    model=target_model,
+                    contents=prompt
+                )
+                return response.text.strip() if hasattr(response, 'text') else str(response)
+            
+            elif cls.mode == 'old_sdk':
+                model_instance = cls.genai_module.GenerativeModel(target_model)
+                response = model_instance.generate_content(prompt)
+                return response.text.strip() if hasattr(response, 'text') else str(response)
+                
+        except Exception as e:
+            return f"AI Error: {str(e)}"
+
+    @staticmethod
+    def generate_dorks(email: str) -> str:
+        """Generates Google Dorks for an email."""
+        prompt = f"""Target: {email}
+Action: Generate 5 advanced Google Dorks to find exposed documents, logs, or passwords.
+Include site searches for pastebin, s3, github, trello.
+Return ONLY raw dorks, one per line."""
+        return AIService.generate(prompt)
+
     @staticmethod
     def generate_response(message: str) -> dict:
         """
-        Generates AI response using Gemini.
+        Generates AI response using Gemini with Context.
         """
-        if not Config.GEMINI_API_KEY:
-            raise ValueError("GEMINI_API_KEY not configured")
-
-        try:
-            from google import genai
-            client = genai.Client(api_key=Config.GEMINI_API_KEY)
-            
-            context = AIService.build_context(message)
-            system_context = """You are a cybersecurity intelligence analyst expert. 
+        AIService.initialize()
+        
+        context = AIService.build_context(message)
+        system_context = """You are a cybersecurity intelligence analyst expert. 
 Help analyze data and identify patterns. Be concise but insightful."""
-            
-            full_prompt = f"{system_context}\n{context}\n\nUser Question: {message}"
-            
-            response = client.models.generate_content(
-                model=Config.GEMINI_MODEL,
-                contents=full_prompt
-            )
-            
-            return {
-                'response': response.text,
-                'model': Config.GEMINI_MODEL,
-                'context_used': bool(context)
-            }
-        except Exception as e:
-            raise e
+        
+        full_prompt = f"{system_context}\n{context}\n\nUser Question: {message}"
+        
+        response_text = AIService.generate(full_prompt)
+        
+        return {
+            'response': response_text,
+            'model': Config.GEMINI_MODEL,
+            'context_used': bool(context)
+        }

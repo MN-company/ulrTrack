@@ -152,8 +152,9 @@ def start_worker(app):
                             cities = [v.city for v in visits if v.city]
                             devices = [v.ai_summary for v in visits if v.ai_summary]
                             
+                            
                             # Build AI prompt
-                            from .ai_engine import ai
+                            from .services.ai_service import AIService
                             
                             prompt = f"""Agisci come un esperto analista di intelligence. Incrocia questi dati disparati per l'obiettivo: {email}
 Dati disponibili:
@@ -174,17 +175,17 @@ Istruzioni:
 
 Rispondi in formato testo pulito e conciso."""
 
-                            ai_result = ai.generate(prompt)
+                            ai_result = AIService.generate(prompt)
                             
                             # Store result in custom_fields
                             import json as json_lib
                             ai_result = ai_result.strip()
-                            cf = json_lib.loads(lead.custom_fields or '{}')
+                            cf = json_lib.loads(lead.custom_fields_data or '{}')
                             cf['ai_identity'] = ai_result
                             cf['gaia_id'] = gaia
                             if gravatar:
                                 cf['gravatar'] = gravatar
-                            lead.custom_fields = json_lib.dumps(cf)
+                            lead.custom_fields_data = cf # Use setter
                             
                             # Try to extract name from AI response and save to lead.name
                             import re
@@ -217,7 +218,7 @@ Rispondi in formato testo pulito e conciso."""
                             domain = email.split('@')[1] if '@' in email else ''
                             is_corporate = not any(x in domain for x in ['gmail', 'yahoo', 'hotmail', 'outlook', 'icloud', 'proton'])
                             
-                            from .ai_engine import ai
+                            from .services.ai_service import AIService
                             
                             prompt = f"""You are a lead classification AI. Based on this data, suggest 2-4 short tags (one word each, comma separated).
 
@@ -232,7 +233,7 @@ CURRENT TAGS: {lead.tags or 'none'}
 Suggest tags like: VIP, Corporate, Mobile, Italian, US, TechUser, Suspicious, Anonymous, HighValue, Returning, etc.
 Output ONLY the tags, comma separated, nothing else."""
 
-                            new_tags = ai.generate(prompt)
+                            new_tags = AIService.generate(prompt)
                             
                             # Parse and merge tags
                             new_tags = new_tags.strip()
