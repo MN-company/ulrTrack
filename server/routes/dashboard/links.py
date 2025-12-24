@@ -164,7 +164,7 @@ def edit_link(slug):
 @login_required
 def qr_code(slug):
     """Generate QR code for link."""
-    full_url = f\"{Config.SERVER_URL}/{slug}\"
+    full_url = f"{Config.SERVER_URL}/{slug}"
     qr = segno.make(full_url)
     buf = io.BytesIO()
     qr.save(buf, kind='png', scale=10)
