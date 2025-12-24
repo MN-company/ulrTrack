@@ -6,6 +6,7 @@ import re
 from ...models import Lead, Visit
 from ...extensions import db, log_queue
 from ...ai_engine import ai
+from ...config import Config
 
 bp = Blueprint('dashboard_ai', __name__)
 
@@ -159,10 +160,10 @@ Help analyze data and identify patterns. Be concise but insightful."""
 @login_required
 def ai_dashboard():
     """Redirect to unified console."""
-    return redirect(url_for('dashboard.ai_console'))
+    return redirect(url_for('dashboard.dashboard_ai.ai_console'))
 
     """Redirect to unified console."""
-    return redirect(url_for('dashboard.ai_console'))
+    return redirect(url_for('dashboard.dashboard_ai.ai_console'))
 
 @bp.route('/ai/analyze_all', methods=['POST'])
 @login_required
@@ -180,7 +181,7 @@ def ai_analyze_all():
         log_queue.put({'type': 'identity_inference', 'lead_id': lead.id})
     
     flash(f'Queued {len(leads_pending)} leads for AI analysis.', 'success')
-    return redirect(url_for('dashboard.ai_dashboard'))
+    return redirect(url_for('dashboard.dashboard_ai.ai_dashboard'))
 
 @bp.route('/ai/auto_tag', methods=['POST'])
 @login_required
@@ -190,7 +191,7 @@ def ai_auto_tag():
     if lead_id:
         log_queue.put({'type': 'ai_auto_tag', 'lead_id': int(lead_id)})
         flash('AI Auto-Tagging queued.', 'success')
-    return redirect(request.referrer or url_for('dashboard.ai_dashboard'))
+    return redirect(request.referrer or url_for('dashboard.dashboard_ai.ai_dashboard'))
 
 @bp.route('/ai/auto_tag_all', methods=['POST'])
 @login_required
@@ -200,7 +201,7 @@ def ai_auto_tag_all():
     for lead in leads:
         log_queue.put({'type': 'ai_auto_tag', 'lead_id': lead.id})
     flash(f'Queued {len(leads)} leads for AI auto-tagging.', 'success')
-    return redirect(url_for('dashboard.ai_dashboard'))
+    return redirect(url_for('dashboard.dashboard_ai.ai_dashboard'))
 
 # ============================================
 # V36: AI CHAT

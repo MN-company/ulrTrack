@@ -39,12 +39,12 @@ def create_link():
     
     if not dest:
         flash('Destination required', 'error')
-        return redirect(url_for('dashboard.dashboard_home'))
+        return redirect(url_for('dashboard.dashboard_links.dashboard_home'))
     if not slug:
         slug = generate_slug()
     if Link.query.filter_by(slug=slug).first():
         flash('Slug exists', 'error')
-        return redirect(url_for('dashboard.dashboard_home'))
+        return redirect(url_for('dashboard.dashboard_links.dashboard_home'))
 
     new_link = Link(
         destination=dest, 
@@ -64,7 +64,7 @@ def create_link():
     db.session.add(new_link)
     db.session.commit()
     flash(f'Link created: /{slug}', 'success')
-    return redirect(url_for('dashboard.dashboard_home'))
+    return redirect(url_for('dashboard.dashboard_links.dashboard_home'))
 
 @bp.route('/create_full', methods=['GET', 'POST'])
 @login_required
@@ -76,12 +76,12 @@ def create_full():
         
         if not dest:
             flash('Destination required', 'error')
-            return redirect(url_for('dashboard.create_full'))
+            return redirect(url_for('dashboard.dashboard_links.create_full'))
         if not slug:
             slug = generate_slug()
         if Link.query.filter_by(slug=slug).first():
             flash('Slug exists', 'error')
-            return redirect(url_for('dashboard.create_full'))
+            return redirect(url_for('dashboard.dashboard_links.create_full'))
         
         new_link = Link(
             destination=dest,
@@ -116,7 +116,7 @@ def create_full():
         db.session.add(new_link)
         db.session.commit()
         flash(f'Link created: /{slug}', 'success')
-        return redirect(url_for('dashboard.dashboard_home'))
+        return redirect(url_for('dashboard.dashboard_links.dashboard_home'))
     
     return render_template('create_full.html', server_url=Config.SERVER_URL)
 
@@ -129,7 +129,7 @@ def delete_link(id):
         db.session.delete(link)
         db.session.commit()
         flash('Link deleted', 'success')
-    return redirect(url_for('dashboard.dashboard_home'))
+    return redirect(url_for('dashboard.dashboard_links.dashboard_home'))
 
 @bp.route('/edit/<slug>', methods=['GET', 'POST'])
 @login_required
@@ -155,7 +155,7 @@ def edit_link(slug):
         
         db.session.commit()
         flash('Link updated', 'success')
-        return redirect(url_for('dashboard.dashboard_home'))
+        return redirect(url_for('dashboard.dashboard_links.dashboard_home'))
     
     return render_template('edit_link.html', link=link, server_url=Config.SERVER_URL)
 
@@ -187,6 +187,6 @@ def settings():
     if request.method == 'POST':
         # Save settings logic here
         flash('Settings saved', 'success')
-        return redirect(url_for('dashboard.settings'))
+        return redirect(url_for('dashboard.dashboard_links.settings'))
     
     return render_template('settings.html')

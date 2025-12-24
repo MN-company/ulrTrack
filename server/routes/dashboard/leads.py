@@ -34,7 +34,7 @@ def generate_dorks(lead_id):
     except Exception as e:
         flash(f"AI Error: {str(e)}", "error")
         
-    return redirect(url_for('dashboard.lead_profile', lead_id=lead_id))
+    return redirect(url_for('dashboard.dashboard_leads.lead_profile', lead_id=lead_id))
 @bp.route('/contacts', methods=['GET', 'POST'])
 @login_required
 def contacts():
@@ -52,7 +52,7 @@ def contacts():
                 flash(f'Lead {email} added.', 'success')
             else:
                  flash('Lead already exists.', 'warning')
-        return redirect(url_for('dashboard.contacts'))
+        return redirect(url_for('dashboard.dashboard_leads.contacts'))
 
     leads = Lead.query.order_by(Lead.created_at.desc()).all()
     return render_template('contacts.html', leads=leads)
@@ -96,12 +96,12 @@ def merge_leads():
     
     if not primary_id or not secondary_ids:
         flash('Select a primary lead and at least one secondary.', 'error')
-        return redirect(url_for('dashboard.merge_candidates'))
+        return redirect(url_for('dashboard.dashboard_leads.merge_candidates'))
     
     primary = Lead.query.get(int(primary_id))
     if not primary:
         flash('Primary lead not found.', 'error')
-        return redirect(url_for('dashboard.merge_candidates'))
+        return redirect(url_for('dashboard.dashboard_leads.merge_candidates'))
     
     merged_count = 0
     for sec_id in secondary_ids:
@@ -137,7 +137,7 @@ def merge_leads():
     
     db.session.commit()
     flash(f'Merged {merged_count} leads into {primary.email}.', 'success')
-    return redirect(url_for('dashboard.lead_profile', lead_id=primary.id))
+    return redirect(url_for('dashboard.dashboard_leads.lead_profile', lead_id=primary.id))
 
 @bp.route('/contacts/export_csv')
 @login_required
@@ -173,7 +173,7 @@ def lead_profile(lead_id):
         lead.tags = request.form.get('tags') # Save tags
         db.session.commit()
         flash('Profile updated.', 'success')
-        return redirect(url_for('dashboard.lead_profile', lead_id=lead_id))
+        return redirect(url_for('dashboard.dashboard_leads.lead_profile', lead_id=lead_id))
         
     import json
     holehe_list = []
@@ -286,7 +286,7 @@ def analyze_email():
     
     log_queue.put({'type': 'osint', 'email': email, 'lead_id': lead.id})
     flash('Scan started.', 'success')
-    return redirect(url_for('dashboard.lead_profile', lead_id=lead.id))
+    return redirect(url_for('dashboard.dashboard_leads.lead_profile', lead_id=lead.id))
 
 @bp.route('/analyze_identity/<int:lead_id>', methods=['POST'])
 @login_required
@@ -295,4 +295,4 @@ def analyze_identity(lead_id):
     lead = Lead.query.get_or_404(lead_id)
     log_queue.put({'type': 'identity_inference', 'lead_id': lead_id})
     flash('AI Identity Analysis queued. Refresh in a few seconds.', 'success')
-    return redirect(url_for('dashboard.lead_profile', lead_id=lead_id))
+    return redirect(url_for('dashboard.dashboard_leads.lead_profile', lead_id=lead_id))

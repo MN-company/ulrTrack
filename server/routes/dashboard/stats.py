@@ -1,10 +1,11 @@
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, request, redirect, flash, url_for
 from flask_login import login_required
 import json
 from collections import Counter
 from datetime import datetime, timedelta
 
 from ...models import Link, Visit
+from ...extensions import db
 from ...config import Config
 
 bp = Blueprint('dashboard_stats', __name__)
@@ -149,7 +150,7 @@ def device_profile(fingerprint):
     
     if not visits:
         flash('No device found with that fingerprint.', 'error')
-        return redirect(url_for('dashboard.dashboard_home'))
+        return redirect(url_for('dashboard.dashboard_links.dashboard_home'))
     
     # Aggregate data
     emails = list(set([v.email for v in visits if v.email]))
