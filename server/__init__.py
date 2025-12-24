@@ -96,11 +96,7 @@ def create_app():
         except Exception: pass # This catches errors in the sqlite3 operations
         
         # V39 Session Detector (Fingerprint.js Pro)
-        try:
-            from sqlalchemy import text
-            db.session.execute(text("ALTER TABLE visit ADD COLUMN fpjs_confidence FLOAT"))
-            db.session.commit()
-            print("✅ Added Fingerprint.js Pro columns to Visit table")
+
         try:
             from sqlalchemy import text
             db.session.execute(text("ALTER TABLE visit ADD COLUMN fpjs_confidence FLOAT"))
