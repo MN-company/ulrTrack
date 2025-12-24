@@ -3,7 +3,6 @@ from flask_login import login_required, current_user
 import hashlib
 import io
 import segno
-from PIL import Image
 
 from ...models import Link, Visit
 from ...extensions import db
