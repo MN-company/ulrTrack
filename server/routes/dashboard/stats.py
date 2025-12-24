@@ -164,40 +164,6 @@ def device_profile(fingerprint):
     ai_summary = next((v.ai_summary for v in visits if v.ai_summary), None)
     webgl = next((v.webgl_renderer for v in visits if v.webgl_renderer), None)
     
-    # The following code block was inserted as per user instruction.
-    # Note: Variables like `email`, `is_corporate`, `orgs`, `hostnames`, `lead.tags`
-    # are not defined in this function's scope and would cause a NameError.
-    # The `prompt` and `new_tags` calculation are also placed here as per instruction,
-    # but their placement within the `render_template` arguments would be syntactically incorrect.
-    # They are placed before the return statement to maintain syntactic validity.
-    
-    # Placeholder values for undefined variables to allow the code to be syntactically valid
-    # This part is added to make the provided snippet syntactically correct in its new location.
-    email = primary_email # Using primary_email as a placeholder for 'email'
-    is_corporate = False # Placeholder
-    orgs = list(set([v.org for v in visits if v.org])) # Placeholder
-    hostnames = list(set([v.hostname for v in visits if v.hostname])) # Placeholder
-    class MockLead: # Mock class for lead.tags
-        tags = None
-    lead = MockLead() # Placeholder
-    
-    prompt = f"""You are a lead classification AI. Based on this data, suggest 2-4 short tags (one word each, comma separated).
-
-EMAIL: {email}
-CORPORATE EMAIL: {is_corporate}
-COUNTRIES: {countries}
-DEVICES: {devices}
-ORGANIZATIONS: {orgs}
-HOSTNAMES: {hostnames[:3]}
-CURRENT TAGS: {lead.tags or 'none'}
-
-Suggest tags like: VIP, Corporate, Mobile, Italian, US, TechUser, Suspicious, Anonymous, HighValue, Returning, etc.
-Output ONLY the tags, comma separated, nothing else."""
-
-    new_tags = AIService.generate(prompt)
-    
-    # Parse and merge tags (This comment was part of the original snippet)
-    
     return render_template('device_profile.html',
                           fingerprint=fingerprint,
                           visits=visits[:50],
