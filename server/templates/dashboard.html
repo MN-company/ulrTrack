@@ -1,121 +1,120 @@
 {% extends "base.html" %}
 
-{% block head %}
-<style>
-    /* Dashboard specific styles */
-    .quick-create {
-        display: grid;
-        grid-template-columns: 3fr 1fr 1fr 1fr auto;
-        gap: 10px;
-        align-items: center;
-    }
-
-    .metrics {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 20px;
-        margin-bottom: 30px;
-    }
-
-    .metric-card {
-        background: linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
-        padding: 20px;
-        border-radius: 12px;
-        border: var(--border);
-    }
-
-    .metric-val {
-        font-size: 2rem;
-        font-weight: 700;
-        color: white;
-    }
-
-    .metric-label {
-        font-size: 0.8rem;
-        color: var(--text-sec);
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-</style>
-{% endblock %}
+{% block breadcrumb %}Command Center{% endblock %}
 
 {% block content %}
-
-<!-- Metrics Row -->
-<div class="metrics">
-    <div class="metric-card">
-        <div class="metric-val mono"><i class="fas fa-link"></i> {{ total_links }}</div>
-        <div class="metric-label">Active Links</div>
-    </div>
-    <div class="metric-card">
-        <div class="metric-val mono"><i class="fas fa-mouse-pointer"></i> {{ total_clicks }}</div>
-        <div class="metric-label">Total Visits</div>
-    </div>
-    <div class="metric-card">
-        <div class="metric-val mono"><i class="fas fa-shield-alt"></i> {{ total_blocked }}</div>
-        <div class="metric-label">Blocked</div>
-    </div>
-    <div class="metric-card">
-        <div class="metric-val mono text-accent"><i class="fas fa-chart-line"></i> {{ (total_clicks - total_blocked) }}
+<div class="dashboard-grid">
+    <!-- Stat Card: Total Visits -->
+    <div class="card glass">
+        <div class="card-header">
+            <span class="card-title">Total Intercepts</span>
+            <i class="fa-solid fa-satellite-dish text-accent"></i>
         </div>
-        <div class="metric-label">Successful</div>
+        <div class="stat-value">{{ visits|length }}</div>
+        <div class="stat-trend trend-up">
+            <i class="fa-solid fa-arrow-trend-up"></i> Live Tracking
+        </div>
+    </div>
+
+    <!-- Stat Card: Leads -->
+    <div class="card glass">
+        <div class="card-header">
+            <span class="card-title">Identified Targets</span>
+            <i class="fa-solid fa-users-viewfinder text-accent" style="color: var(--accent-purple)"></i>
+        </div>
+        <div class="stat-value">{{ leads|length }}</div>
+        <div class="stat-trend">
+            <span class="text-muted">In Database</span>
+        </div>
+    </div>
+
+    <!-- Stat Card: Active Links -->
+    <div class="card glass">
+        <div class="card-header">
+            <span class="card-title">Active Campaigns</span>
+            <i class="fa-solid fa-link text-accent" style="color: var(--accent-success)"></i>
+        </div>
+        <div class="stat-value">{{ links|length }}</div>
+        <div class="stat-trend trend-up">
+            <a href="{{ url_for('dashboard.dashboard_links.links') }}" style="font-size: 0.8rem">Manage Links &rarr;</a>
+        </div>
     </div>
 </div>
 
-<!-- Quick Create Bar -->
-<div class="card">
-    <form method="POST" action="/dashboard/create" class="quick-create">
+<div class="dashboard-grid" style="grid-template-columns: 2fr 1fr;">
+    <!-- Recent Activity Feed -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title"><i class="fa-solid fa-tower-broadcast"></i> Live Feed (Last 10)</h3>
+            <a href="{{ url_for('dashboard.dashboard_stats.global_timeline') }}" class="btn btn-ghost"
+                style="font-size: 0.8rem">View All</a>
+        </div>
 
-        {{ csrf_token() }}
-        <input type="url" name="destination" placeholder="Paste Target URL here..." required>
-
-        <input type="text" name="slug" placeholder="Slug (Opt)">
-
-        <!-- Minimized Filters/Options -->
-        <select name="block_bots">
-            <option value="true">Block Bot: ON</option>
-            <option value="false">Block Bot: OFF</option>
-        </select>
-
-        <select name="block_vpn">
-            </td>
-            <td class="mono" style="font-size: 1.1rem;">{{ link.visits|length }}</td>
-            <td class="mono" style="font-size: 0.9rem; color: var(--text-sec);">
-                {{ link.created_at.strftime('%Y-%m-%d') }}
-                <div style="font-size:0.8rem;">
-                    <!-- Freed up space (User Request) -->
-                </div>
-            </td>
-            <td style="text-align: right; padding-right: 24px;">
-                <div class="flex-row" style="justify-content: flex-end;">
-                    <button class="btn-outline btn-sm" /" ~ link.slug) }}')"><i class="fas fa-copy"></i></button>
-                    <a href="/dashboard/qr_view/{{ link.slug }}" class="btn-outline btn-sm"><i
-                            class="fas fa-qrcode"></i></a>
-                    <a href="/dashboard/stats/{{ link.slug }}" class="btn-outline btn-sm"><i
-                            class="fas fa-chart-line"></i></a>
-                    <a href="/dashboard/edit/{{ link.slug }}" class="btn-outline btn-sm"><i class="fas fa-edit"></i></a>
-
-                    <form method="POST" action="/dashboard/delete/{{ link.id }}" onsubmit="return confirm('Delete?');"
-                        style="display:inline;">
-
-
-                        {{ csrf_token() }}
-                        <button type="submit" class="btn-sm btn-danger"><i class="fas fa-trash"></i></button>
-                    </form>
-                </div>
-            </td>
-            </tr>
-            {% endfor %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Target (IP/Email)</th>
+                    <th>Campaign</th>
+                    <th>Location</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in visits[:10] %}
+                <tr>
+                    <td class="text-mono" style="font-size: 0.8rem">{{ v.timestamp.strftime('%H:%M:%S') }}</td>
+                    <td>
+                        {% if v.email %}
+                        <span class="text-accent">{{ v.email }}</span>
+                        {% else %}
+                        <span class="text-mono">{{ v.ip_address }}</span>
+                        {% endif %}
+                    </td>
+                    <td><span class="badge badge-blue">{{ v.link.slug }}</span></td>
+                    <td>
+                        {% if v.country %}
+                        <img src="https://flagcdn.com/16x12/{{ v.country|lower }}.png" alt="{{ v.country }}"> {{ v.city
+                        }}
+                        {% else %}
+                        <span class="text-muted">Unknown</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
             </tbody>
-            </table>
+        </table>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Quick Actions</h3>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+            <a href="{{ url_for('dashboard.dashboard_links.create_link') }}" class="btn btn-primary w-full"
+                style="justify-content: center;">
+                <i class="fa-solid fa-plus"></i> New Campaign
+            </a>
+
+            <a href="{{ url_for('dashboard.dashboard_leads.analyze_email') }}" class="btn btn-ghost w-full"
+                style="justify-content: center;">
+                <i class="fa-solid fa-magnifying-glass"></i> OSINT Scan
+            </a>
+
+            <div style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+                <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-secondary)">System Status</h4>
+                <div class="flex-between" style="font-size: 0.85rem; margin-bottom: 0.25rem;">
+                    <span>Worker</span>
+                    <span class="text-accent"><i class="fa-solid fa-circle-check"></i> Active</span>
+                </div>
+                <div class="flex-between" style="font-size: 0.85rem;">
+                    <span>AI Engine</span>
+                    <span class="text-accent" style="color: var(--accent-purple)"><i class="fa-solid fa-bolt"></i>
+                        Gemini 2.0</span>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
-
-<script>
-    function copyLink(url) {
-        navigator.clipboard.writeText(url).then(() => {
-            alert("Copied: " + url);
-        });
-    }
-</script>
-
 {% endblock %}
