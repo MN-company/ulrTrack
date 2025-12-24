@@ -15,20 +15,30 @@ bp = Blueprint('dashboard_links', __name__)
 @bp.route('')
 @login_required
 def dashboard_home():
+    """Command Center / Main Dashboard"""
     try:
+        from ...models import Lead
+        
+        # Get data for Command Center
         links = Link.query.order_by(Link.created_at.desc()).all()
-        total_clicks = Visit.query.count()
-        total_blocked = Visit.query.filter_by(is_suspicious=True).count()
+        visits = Visit.query.order_by(Visit.timestamp.desc()).limit(50).all()
+        leads = Lead.query.all()
         
         return render_template('dashboard.html', 
-                              links=links, 
-                              total_links=len(links), 
-                              total_clicks=total_clicks,
-                              total_blocked=total_blocked,
+                              links=links,
+                              visits=visits,
+                              leads=leads, 
                               server_url=Config.SERVER_URL)
     except Exception as e:
         print(f"DASHBOARD ERROR: {e}")
         return f"Dashboard Error: {e}", 500
+
+@bp.route('/links')
+@login_required
+def links():
+    """Campaigns List"""
+    links = Link.query.order_by(Link.created_at.desc()).all()
+    return render_template('links.html', links=links)
 
 @bp.route('/create', methods=['POST'])
 @login_required
