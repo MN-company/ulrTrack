@@ -113,5 +113,21 @@ Follow the interactive wizard to:
 
 ---
 
+## 🕵️ Blackbird OSINT Integration
+
+Blackbird is used for advanced OSINT scanning of captured email addresses.
+
+### Setup Blackbird
+```bash
+git clone https://github.com/p1ngul1n0/blackbird
+cd blackbird
+pip install -r requirements.txt
+```
+
+### Usage
+Once installed, the system will automatically use Blackbird for deep username searches when you trigger OSINT scans from the Contacts page.
+
+---
+
 ## ⚠️ Disclaimer
 This tool is intended for educational and legitimate traffic management purposes. The authors are not responsible for misuse.

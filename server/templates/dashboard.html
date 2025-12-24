@@ -44,20 +44,21 @@
 <!-- Metrics Row -->
 <div class="metrics">
     <div class="metric-card">
-        <div class="metric-val mono">{{ total_links }}</div>
+        <div class="metric-val mono"><i class="fas fa-link"></i> {{ total_links }}</div>
         <div class="metric-label">Active Links</div>
     </div>
     <div class="metric-card">
-        <div class="metric-val mono text-accent">{{ total_clicks }}</div>
-        <div class="metric-label">Total Traffic</div>
+        <div class="metric-val mono"><i class="fas fa-mouse-pointer"></i> {{ total_clicks }}</div>
+        <div class="metric-label">Total Visits</div>
     </div>
     <div class="metric-card">
-        <div class="metric-val mono" style="color: #ff5555;">{{ total_blocked }}</div>
-        <div class="metric-label">Blocked / Suspicious</div>
+        <div class="metric-val mono"><i class="fas fa-shield-alt"></i> {{ total_blocked }}</div>
+        <div class="metric-label">Blocked</div>
     </div>
     <div class="metric-card">
-        <div class="metric-val mono">ON</div>
-        <div class="metric-label">System Status</div>
+        <div class="metric-val mono text-accent"><i class="fas fa-chart-line"></i> {{ (total_clicks - total_blocked) }}
+        </div>
+        <div class="metric-label">Successful</div>
     </div>
 </div>
 

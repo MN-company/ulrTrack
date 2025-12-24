@@ -373,20 +373,27 @@
     <nav>
         <div class="logo">STEALTH<span>V35</span></div>
         <div class="nav-links">
-            <a href="/dashboard" class="{% if request.path == '/dashboard' %}active{% endif %}">Dashboard</a>
-            <a href="/dashboard/architect" class="{% if 'architect' in request.path %}active{% endif %}">Architect</a>
-            <a href="/dashboard/timeline"
-                class="{% if request.path == '/dashboard/timeline' %}active{% endif %}">Timeline</a>
-            <a href="/dashboard/contacts"
-                class="{% if request.path == '/dashboard/contacts' %}active{% endif %}">Contacts</a>
-            <a href="/dashboard/ai"
-                class="{% if '/dashboard/ai' in request.path and '/chat' not in request.path %}active{% endif %}">AI</a>
-            <a href="/dashboard/ai/chat" class="{% if '/dashboard/ai/chat' in request.path %}active{% endif %}"><i
-                    class="fas fa-comments"></i> Chat</a>
-            <a href="/dashboard/settings">Settings</a>
+            <a href="/dashboard" class="{% if request.path == '/dashboard' %}active{% endif %}">
+                <i class="fas fa-th-large"></i> Dashboard
+            </a>
+            <a href="/dashboard/architect" class="{% if 'architect' in request.path %}active{% endif %}">
+                <i class="fas fa-code"></i> Architect
+            </a>
+            <a href="/dashboard/timeline" class="{% if request.path == '/dashboard/timeline' %}active{% endif %}">
+                <i class="fas fa-clock"></i> Timeline
+            </a>
+            <a href="/dashboard/contacts" class="{% if request.path == '/dashboard/contacts' %}active{% endif %}">
+                <i class="fas fa-users"></i> Contacts
+            </a>
+            <a href="/dashboard/ai" class="{% if '/dashboard/ai' in request.path %}active{% endif %}">
+                <i class="fas fa-robot"></i> AI
+            </a>
+            <a href="/dashboard/settings">
+                <i class="fas fa-cog"></i> Settings
+            </a>
         </div>
         <div>
-            <a href="/logout" class="btn-outline btn-sm">Logout</a>
+            <a href="/logout" class="btn-outline btn-sm"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </div>
     </nav>
     {% endif %}
