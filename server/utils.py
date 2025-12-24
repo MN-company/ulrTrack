@@ -2,10 +2,20 @@ import random
 import string
 import requests
 import os
+import math
+from typing import Tuple, Optional, Dict, List, Set, Any
+from functools import lru_cache
 from .config import Config
 
-def is_bot_ua(ua_string):
+# Global session for connection pooling (Speed boost)
+session = requests.Session()
+adapter = requests.adapters.HTTPAdapter(pool_connections=10, pool_maxsize=10)
+session.mount('http://', adapter)
+session.mount('https://', adapter)
+
+def is_bot_ua(ua_string: str) -> bool:
     """Enhanced heuristic to detect bots, crawlers, and headless browsers."""
+    if not ua_string: return False
     bots = [
         'bot', 'crawl', 'slurp', 'spider', 'curl', 'wget', 'facebook', 'whatsapp', 'telegram', 
         'expand', 'preview', 'peeker', 'twitter', 'discord', 'slack', 'go-http-client', 'python-requests',
@@ -14,17 +24,17 @@ def is_bot_ua(ua_string):
     ua_lower = ua_string.lower()
     return any(bot in ua_lower for bot in bots)
 
-def calculate_entropy(text):
+def calculate_entropy(text: str) -> float:
     """Calculates Shannon entropy of a string."""
-    import math
-    if not text: return 0
-    entropy = 0
+    if not text: return 0.0
+    entropy = 0.0
+    length = len(text)
     for x in set(text):
-        p_x = text.count(x) / len(text)
+        p_x = text.count(x) / length
         entropy -= p_x * math.log2(p_x)
     return entropy
 
-def is_gibberish_email(email):
+def is_gibberish_email(email: str) -> Tuple[bool, Optional[str]]:
     """
     Detects keyboard-smash or garbage emails based on heuristics.
     Returns (True, Reason) if gibberish, (False, None) otherwise.
@@ -37,13 +47,10 @@ def is_gibberish_email(email):
     if len(local_part) < 3: return True, "Too Short"
     
     # 2. Entropy Check
-    # 'aaaaa' -> 0.0, 'abcdef' -> 2.58
-    # 'asdasd' -> 1.58
     ent = calculate_entropy(local_part)
     if ent < 1.0 and len(local_part) > 3: return True, "Low Entropy (Repetitive)"
     
     # 3. Consonant Clusters
-    # English rarely has > 5 consecutive consonants
     vowels = "aeiouy"
     consec_cons = 0
     max_consec_cons = 0
@@ -64,45 +71,40 @@ def is_gibberish_email(email):
 
     return False, None
 
-def validate_email_strict(email):
-    """
-    Strict validation combining syntax, gibberish check, and domain rules.
-    """
+def validate_email_strict(email: str) -> Tuple[bool, str]:
+    """Strict validation combining syntax, gibberish check, and domain rules."""
     import re
-    # Syntax
     if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
         return False, "Invalid Syntax"
         
-    # Gibberish
     is_bad, reason = is_gibberish_email(email)
     if is_bad:
         return False, f"Gibberish Detected: {reason}"
         
-    # Disposable (Basic - heavily relied on list elsewhere, this is fallback)
-    # in public.py we use is_disposable_email
-    
     return True, "Valid"
 
-def generate_slug(length=6):
+def generate_slug(length: int = 6) -> str:
     """Generates a random alphanumeric slug."""
     characters = string.ascii_letters + string.digits
-    return ''.join(random.choice(characters) for i in range(length))
+    return ''.join(random.choice(characters) for _ in range(length))
 
-def shorten_with_isgd(url):
-    """Shortens a URL using is.gd API for masking."""
+@lru_cache(maxsize=1000)
+def shorten_with_isgd(url: str) -> Optional[str]:
+    """Shortens a URL using is.gd API for masking (Cached)."""
     try:
-        resp = requests.get(f"https://is.gd/create.php?format=simple&url={url}", timeout=5)
+        resp = session.get(f"https://is.gd/create.php?format=simple&url={url}", timeout=5)
         if resp.status_code == 200:
             return resp.text.strip()
     except Exception as e:
         print(f"is.gd Error: {e}")
     return None
 
-def get_geo_data(ip):
-    """Fetch ISP, Geo, AND Proxy/Hosting data from ip-api.com."""
+@lru_cache(maxsize=2000)
+def get_geo_data(ip: str) -> Dict[str, Any]:
+    """Fetch ISP, Geo, AND Proxy/Hosting data from ip-api.com (Cached)."""
     try:
         fields = "status,country,city,lat,lon,isp,org,as,proxy,hosting,mobile,query,countryCode"
-        resp = requests.get(f"http://ip-api.com/json/{ip}?fields={fields}", timeout=1.5)
+        resp = session.get(f"http://ip-api.com/json/{ip}?fields={fields}", timeout=1.5)
         data = resp.json()
         if data.get('status') == 'success':
             return data
@@ -110,7 +112,7 @@ def get_geo_data(ip):
         pass
     return {}
 
-def get_reverse_dns(ip):
+def get_reverse_dns(ip: str) -> Optional[str]:
     """Perform reverse DNS lookup to get hostname from IP."""
     import socket
     try:
@@ -119,7 +121,7 @@ def get_reverse_dns(ip):
     except:
         return None
 
-def parse_referrer(url):
+def parse_referrer(url: str) -> Dict[str, Any]:
     """Extract intelligence from referrer URL."""
     if not url:
         return {'domain': None, 'platform': 'Direct', 'utm': {}}
@@ -157,14 +159,13 @@ def parse_referrer(url):
 # V31: ADVANCED OSINT UTILITIES
 # ============================================
 
-def email_permutations(email):
+def email_permutations(email: str) -> Dict[str, Any]:
     """Generate name permutations from email address."""
     if not email or '@' not in email:
         return {'first_names': [], 'last_names': [], 'full_names': [], 'company': None}
     
     local_part, domain = email.split('@')
     
-    # Remove trailing numbers (e.g. gobberpaolo92 -> gobberpaolo)
     import re
     local_clean = re.sub(r'\d+$', '', local_part.lower())
     local_clean = local_clean.replace('_', '.').replace('-', '.')
@@ -175,19 +176,13 @@ def email_permutations(email):
     full_names = []
     
     if len(parts) >= 2:
-        # mario.rossi pattern - most reliable
+        # mario.rossi pattern
         first_names.append(parts[0].capitalize())
         last_names.append(parts[-1].capitalize())
         full_names.append(f"{parts[0].capitalize()} {parts[-1].capitalize()}")
     elif len(parts) == 1 and len(parts[0]) > 3:
-        # Single word like "gobberpaolo" - try to split intelligently
         word = parts[0]
-        
-        # Try common name patterns (first 4-7 chars might be first name)
-        # We'll just store the raw username, let AI figure it out
         full_names.append(word.capitalize())
-        
-        # Don't make wild guesses - let AI handle ambiguous cases
     
     # Extract company from domain
     company = None
@@ -201,18 +196,17 @@ def email_permutations(email):
         'company': company
     }
 
-def get_gravatar_profile(email):
-    """Fetch extended Gravatar profile data."""
+@lru_cache(maxsize=500)
+def get_gravatar_profile(email: str) -> Optional[Dict[str, Any]]:
+    """Fetch extended Gravatar profile data (Cached)."""
     import hashlib
-    if not email:
-        return None
+    if not email: return None
     
     email_hash = hashlib.md5(email.lower().encode('utf-8')).hexdigest()
     
     try:
-        # Gravatar JSON profile endpoint
         url = f"https://www.gravatar.com/{email_hash}.json"
-        resp = requests.get(url, timeout=3)
+        resp = session.get(url, timeout=3)
         if resp.status_code == 200:
             data = resp.json()
             entry = data.get('entry', [{}])[0]
@@ -228,33 +222,24 @@ def get_gravatar_profile(email):
         pass
     return None
 
-def get_gaia_id(email):
+def get_gaia_id(email: str) -> Optional[str]:
     """Attempt to extract Google Gaia ID from email via public endpoints."""
-    if not email or 'gmail' not in email.lower():
-        return None
+    if not email or 'gmail' not in email.lower(): return None
     
     try:
-        # Technique: Google Calendar public embed
-        # This can sometimes reveal a Gaia ID in redirects
-        import hashlib
-        email_hash = hashlib.md5(email.lower().encode('utf-8')).hexdigest()
-        
-        # Try Google People API (public profile check)
         url = f"https://www.google.com/s2/photos/public/{email}"
-        resp = requests.head(url, allow_redirects=True, timeout=3)
+        resp = session.head(url, allow_redirects=True, timeout=3)
         
-        # If redirected, the URL might contain the Gaia ID
         if resp.url and '/u/0/' in resp.url:
-            # Extract ID from URL pattern
             parts = resp.url.split('/')
-            for i, p in enumerate(parts):
-                if p.isdigit() and len(p) > 10:
-                    return p
-        return None
+            for p in enumerate(parts):
+                if p[1].isdigit() and len(p[1]) > 10:
+                    return p[1]
     except:
-        return None
+        pass
+    return None
 
-def load_domain_list(filename):
+def load_domain_list(filename: str) -> Set[str]:
     """Helper to load domain lists from server/data."""
     domains = set()
     try:
@@ -270,28 +255,27 @@ def load_domain_list(filename):
 DISPOSABLE_DOMAINS = load_domain_list('disposable_domains.txt')
 PRIVACY_DOMAINS = load_domain_list('privacy_domains.txt')
 
-def is_disposable_email(email):
+def is_disposable_email(email: str) -> bool:
     domain = email.split('@')[-1].lower()
     return domain in DISPOSABLE_DOMAINS
 
-def is_privacy_email(email):
+def is_privacy_email(email: str) -> bool:
     domain = email.split('@')[-1].lower()
     return domain in PRIVACY_DOMAINS
 
-def verify_turnstile(token, ip):
+def verify_turnstile(token: str, ip: str) -> bool:
     secret = Config.TURNSTILE_SECRET_KEY
     if not secret: 
         print("ERROR: TURNSTILE_SECRET_KEY missing in Verify.")
         return False
     
     try:
-        resp = requests.post(
+        resp = session.post(
             'https://challenges.cloudflare.com/turnstile/v0/siteverify',
-            data={'secret': secret, 'response': token, 'remoteip': ip}
+            data={'secret': secret, 'response': token, 'remoteip': ip},
+            timeout=5
         )
         data = resp.json()
-        if not data.get('success'):
-            print(f"Turnstile Failed: {data.get('error-codes')}")
         return data.get('success', False)
     except Exception as e:
         print(f"Turnstile Connection Error: {e}")
