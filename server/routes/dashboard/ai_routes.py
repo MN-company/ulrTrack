@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, flash, url_for
+from flask import Blueprint, render_template, request, redirect, flash, url_for, jsonify
 from flask_login import login_required
 import json
 import re
@@ -147,21 +147,18 @@ Help analyze data and identify patterns. Be concise but insightful."""
             contents=full_prompt
         )
         
-        return json_lib.dumps({
+        return jsonify({
             'response': response.text,
             'model': Config.GEMINI_MODEL
         })
         
     except Exception as e:
-        return json_lib.dumps({'error': str(e)}), 500
+        return jsonify({'error': str(e)}), 500
 
 # Legacy routes redirect to console
 @bp.route('/ai')
 @login_required
 def ai_dashboard():
-    """Redirect to unified console."""
-    return redirect(url_for('dashboard.dashboard_ai.ai_console'))
-
     """Redirect to unified console."""
     return redirect(url_for('dashboard.dashboard_ai.ai_console'))
 
@@ -181,7 +178,7 @@ def ai_analyze_all():
         log_queue.put({'type': 'identity_inference', 'lead_id': lead.id})
     
     flash(f'Queued {len(leads_pending)} leads for AI analysis.', 'success')
-    return redirect(url_for('dashboard.dashboard_ai.ai_dashboard'))
+    return redirect(url_for('dashboard.dashboard_ai.ai_console'))
 
 @bp.route('/ai/auto_tag', methods=['POST'])
 @login_required
@@ -191,7 +188,7 @@ def ai_auto_tag():
     if lead_id:
         log_queue.put({'type': 'ai_auto_tag', 'lead_id': int(lead_id)})
         flash('AI Auto-Tagging queued.', 'success')
-    return redirect(request.referrer or url_for('dashboard.dashboard_ai.ai_dashboard'))
+    return redirect(request.referrer or url_for('dashboard.dashboard_ai.ai_console'))
 
 @bp.route('/ai/auto_tag_all', methods=['POST'])
 @login_required
@@ -201,11 +198,4 @@ def ai_auto_tag_all():
     for lead in leads:
         log_queue.put({'type': 'ai_auto_tag', 'lead_id': lead.id})
     flash(f'Queued {len(leads)} leads for AI auto-tagging.', 'success')
-    return redirect(url_for('dashboard.dashboard_ai.ai_dashboard'))
-
-# ============================================
-# V36: AI CHAT
-# ============================================
-
-    """AI Chat interface for conversational analysis."""
-    return render_template('ai_chat.html')
+    return redirect(url_for('dashboard.dashboard_ai.ai_console'))
