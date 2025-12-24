@@ -226,215 +226,66 @@
 
         .card {
             background: var(--card-bg);
-            border-radius: 16px;
-            border: var(--card-border);
-            padding: 30px;
-            backdrop-filter: var(--glass);
-            margin-bottom: 24px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            transition: transform 0.2s, border-color 0.2s;
-        }
 
-        .card:hover {
-            border-color: rgba(255, 255, 255, 0.2);
-        }
+            </head><body><div class="app-shell">< !-- SIDEBAR --><aside class="sidebar"><div class="brand"><i class="fa-solid fa-eye"></i><span>OVERWATCH</span></div><nav class="nav-menu"><a href="{{ url_for('dashboard.dashboard_links.dashboard_home') }}" class="nav-item {% if request.endpoint == 'dashboard.dashboard_links.dashboard_home' %}active{% endif %}"><i class="fa-solid fa-gauge-high"></i>Command Center </a><a href="{{ url_for('dashboard.dashboard_leads.contacts') }}" class="nav-item {% if 'leads' in request.endpoint %}active{% endif %}"><i class="fa-solid fa-users-viewfinder"></i>Targets (Leads) </a><a href="{{ url_for('dashboard.dashboard_links.links') }}" class="nav-item {% if 'links' in request.endpoint and 'home' not in request.endpoint %}active{% endif %}"><i class="fa-solid fa-link"></i>Campaigns (Links) </a><a href="{{ url_for('dashboard.dashboard_ai.ai_console') }}" class="nav-item {% if 'ai' in request.endpoint %}active{% endif %}"><i class="fa-solid fa-brain"></i>AI Analyst </a><a href="{{ url_for('dashboard.dashboard_stats.global_timeline') }}" class="nav-item {% if 'stats' in request.endpoint %}active{% endif %}"><i class="fa-solid fa-chart-line"></i>Global Intel </a><div style="flex: 1"></div><a href="{{ url_for('dashboard.dashboard_users.security_settings') }}" class="nav-item {% if 'security' in request.endpoint %}active{% endif %}"><i class="fa-solid fa-shield-halved"></i>Security </a><a href="{{ url_for('auth.logout') }}" class="nav-item" style="color: var(--accent-danger)"><i class="fa-solid fa-arrow-right-from-bracket"></i>Logout </a></nav></aside>< !-- MAIN CONTENT --><main class="main-content">< !-- TOP BAR --><header class="top-bar"><div class="breadcrumbs">System / <span> {
+                % block breadcrumb %
+            }
 
-        /* Inputs */
-        input,
-        select,
-        textarea {
-            background: rgba(0, 0, 0, 0.4);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: white;
-            padding: 12px 16px;
-            border-radius: 8px;
-            width: 100%;
-            font-family: inherit;
-            font-size: 0.95rem;
-            outline: none;
-            transition: 0.2s;
-        }
+            Dashboard {
+                % endblock %
+            }
 
-        input:focus,
-        select:focus,
-        textarea:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 10px var(--accent-glow);
-            background: rgba(0, 0, 0, 0.6);
-        }
+            </span></div><div class="top-actions"><input type="text" class="search-bar" placeholder="Intelligence Search (Cmd+K)..."><div style="width: 32px; height: 32px; background: var(--accent-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;"> {
+                    {
+                    current_user.username[0].upper()
+                }
+            }
 
-        /* Tables */
-        table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0 4px;
-        }
+            </div></div></header>< !-- SCROLLABLE PAGE AREA --><div class="page-scroll">< !-- Flash Messages --> {
+                % with messages=get_flashed_messages(with_categories=true) %
+            }
 
-        th {
-            text-align: left;
-            color: var(--text-sec);
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: 10px 15px;
-        }
+                {
+                % if messages %
+            }
 
-        td {
-            background: rgba(255, 255, 255, 0.03);
-            padding: 15px;
-        }
+                {
+                % for category,
+                message in messages %
+            }
 
-        td:first-child {
-            border-radius: 8px 0 0 8px;
-        }
+            <div class="badge badge-{{ 'danger' if category == 'error' else 'success' if category == 'success' else 'warning' }} mb-4" style="display: block; width: fit-content;"> {
+                    {
+                    message
+                }
+            }
 
-        td:last-child {
-            border-radius: 0 8px 8px 0;
-        }
+            </div> {
+                % endfor %
+            }
 
-        tr:hover td {
-            background: rgba(255, 255, 255, 0.06);
-        }
+                {
+                % endif %
+            }
 
-        /* Utilities */
-        .text-accent {
-            color: var(--accent);
-        }
+                {
+                % endwith %
+            }
 
-        .badge {
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
+                {
+                % block content %
+            }
 
-        .badge-green {
-            background: rgba(0, 255, 157, 0.15);
-            color: var(--accent);
-            border: 1px solid rgba(0, 255, 157, 0.3);
-        }
+                {
+                % endblock %
+            }
 
-        .badge-red {
-            background: rgba(239, 68, 68, 0.15);
-            color: var(--danger);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-        }
+            </div></main></div> {
+                % block scripts %
+            }
 
-        /* Flash */
-        .flash {
-            padding: 15px;
-            margin-bottom: 25px;
-            border-radius: 8px;
-            font-weight: 500;
-            text-align: center;
-            border: 1px solid transparent;
-        }
+                {
+                % endblock %
+            }
 
-        .flash-error {
-            background: rgba(239, 68, 68, 0.1);
-            color: var(--danger);
-            border-color: rgba(239, 68, 68, 0.3);
-        }
-
-        .flash-success {
-            background: rgba(0, 255, 157, 0.1);
-            color: var(--accent);
-            border-color: rgba(0, 255, 157, 0.3);
-        }
-
-        /* Button Sizes - CONSISTENT */
-        .btn-sm {
-            padding: 6px 12px !important;
-            font-size: 0.8rem !important;
-            border-radius: 6px !important;
-        }
-
-        /* Danger Button */
-        .btn-danger {
-            background: var(--danger);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
-        .btn-danger:hover {
-            background: #dc2626;
-            box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
-        }
-
-        .btn-danger.btn-sm {
-            padding: 6px 12px !important;
-        }
-
-        /* Gray Badge */
-        .badge-gray {
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--text-sec);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        /* Flex Row Helper */
-        .flex-row {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-    </style>
-    {% block head %}{% endblock %}
-</head>
-
-<body>
-
-    {% if current_user.is_authenticated and not hide_nav %}
-    <nav>
-        <div class="logo">STEALTH<span>V35</span></div>
-        <div class="nav-links">
-            <a href="/dashboard" class="{% if request.path == '/dashboard' %}active{% endif %}">
-                <i class="fas fa-th-large"></i> Dashboard
-            </a>
-            <a href="/dashboard/architect" class="{% if 'architect' in request.path %}active{% endif %}">
-                <i class="fas fa-code"></i> Architect
-            </a>
-            <a href="/dashboard/timeline" class="{% if request.path == '/dashboard/timeline' %}active{% endif %}">
-                <i class="fas fa-clock"></i> Timeline
-            </a>
-            <a href="/dashboard/contacts" class="{% if request.path == '/dashboard/contacts' %}active{% endif %}">
-                <i class="fas fa-users"></i> Contacts
-            </a>
-            <a href="/dashboard/ai" class="{% if '/dashboard/ai' in request.path %}active{% endif %}">
-                <i class="fas fa-robot"></i> AI
-            </a>
-            <a href="/dashboard/settings">
-                <i class="fas fa-cog"></i> Settings
-            </a>
-            <a href="/dashboard/security">
-                <i class="fas fa-shield-alt"></i> Security
-            </a>
-        </div>
-        <div>
-            <a href="/logout" class="btn-outline btn-sm"><i class="fas fa-sign-out-alt"></i> Logout</a>
-        </div>
-    </nav>
-    {% endif %}
-
-    <div class="container">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        {% for category, message in messages %}
-        <div class="flash flash-{{ category }}">{{ message }}</div>
-        {% endfor %}
-        {% endif %}
-        {% endwith %}
-
-        {% block content %}{% endblock %}
-    </div>
-
-</body>
-
-</html>
+            </body></html>

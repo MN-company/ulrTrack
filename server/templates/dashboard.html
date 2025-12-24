@@ -78,102 +78,36 @@
         </select>
 
         <select name="block_vpn">
-            <option value="false">Block VPN: OFF</option>
-            <option value="true">Block VPN: ON</option>
-        </select>
+            </td>
+            <td class="mono" style="font-size: 1.1rem;">{{ link.visits|length }}</td>
+            <td class="mono" style="font-size: 0.9rem; color: var(--text-sec);">
+                {{ link.created_at.strftime('%Y-%m-%d') }}
+                <div style="font-size:0.8rem;">
+                    <!-- Freed up space (User Request) -->
+                </div>
+            </td>
+            <td style="text-align: right; padding-right: 24px;">
+                <div class="flex-row" style="justify-content: flex-end;">
+                    <button class="btn-outline btn-sm" /" ~ link.slug) }}')"><i class="fas fa-copy"></i></button>
+                    <a href="/dashboard/qr_view/{{ link.slug }}" class="btn-outline btn-sm"><i
+                            class="fas fa-qrcode"></i></a>
+                    <a href="/dashboard/stats/{{ link.slug }}" class="btn-outline btn-sm"><i
+                            class="fas fa-chart-line"></i></a>
+                    <a href="/dashboard/edit/{{ link.slug }}" class="btn-outline btn-sm"><i class="fas fa-edit"></i></a>
 
-        <div style="display:flex; gap:10px; align-items:center;">
-            <label style="color:var(--text-sec); font-size:0.8rem;"><input type="checkbox" name="mask_url"> Mask</label>
-            <label style="color:var(--text-sec); font-size:0.8rem;"><input type="checkbox" name="enable_captcha">
-                Captcha</label>
-            <label style="color:var(--text-sec); font-size:0.8rem;"><input type="checkbox" name="require_email">
-                Gate</label>
-        </div>
-
-        <select name="email_policy" style="max-width:100px;">
-            <option value="all">Allow All</option>
-            <option value="certified">Certified (No Temp)</option>
-            <option value="trackable">Trackable (Corp/ISP)</option>
-        </select>
-
-        <button type="submit" class="btn"><i class="fas fa-bolt"></i> CREATE</button>
-    </form>
-    <div
-        style="margin-top: 10px; font-size: 0.8rem; color: var(--text-sec); display: flex; justify-content: space-between;">
-        <span><i class="fas fa-info-circle"></i> Quick Mode uses default settings.</span>
-        <a href="/dashboard/create_full" class="btn-outline btn-sm"><i class="fas fa-cog"></i> Advanced Creator</a>
-    </div>
-</div>
-
-<!-- Links Table -->
-<div class="card" style="padding: 0;">
-    <table>
-        <thead>
-            <tr>
-                <th style="padding-left: 24px;">SLUG / DESTINATION</th>
-                <th>FILTERS</th>
-                <th>CLICKS</th>
-                <th>OS / DEVICE</th>
-                <th>CREATED</th>
-                <th style="text-align: right; padding-right: 24px;">ACTIONS</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for link in links %}
-            <tr>
-                <td style="padding-left: 24px;">
-                    <div style="font-weight: 600; font-size: 1rem;">
-                        <span class="text-accent">/{{ link.slug }}</span>
-                    </div>
-                    {% if link.public_masked_url %}
-                    <div style="font-size: 0.8rem; color: var(--accent); margin-bottom: 2px;">
-                        <i class="fas fa-mask"></i> {{ link.public_masked_url }}
-                    </div>
-                    {% endif %}
-                    <div
-                        style="font-size: 0.8rem; color: var(--text-sec); max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                        {{ link.destination }}
-                    </div>
-                </td>
-                <td>
-                    {% if link.block_bots %}<span class="badge badge-green">BOT</span>{% endif %}
-                    {% if link.block_vpn %}<span class="badge badge-green">VPN</span>{% endif %}
-                    {% if link.block_adblock %}<span class="badge badge-green">ADB</span>{% endif %}
-                    {% if link.enable_captcha %}<span class="badge badge-green">CAPTCHA</span>{% endif %}
-                    {% if link.require_email %}<span class="badge badge-green">EMAIL</span>{% endif %}
-                    {% if link.allowed_countries %}<span class="badge badge-warning">{{ link.allowed_countries
-                        }}</span>{% endif %}
-                </td>
-                <td class="mono" style="font-size: 1.1rem;">{{ link.visits|length }}</td>
-                <td class="mono" style="font-size: 0.9rem; color: var(--text-sec);">
-                    {{ link.created_at.strftime('%Y-%m-%d') }}
-                    <div style="font-size:0.8rem;">
-                        <!-- Freed up space (User Request) -->
-                    </div>
-                </td>
-                <td style="text-align: right; padding-right: 24px;">
-                    <div class="flex-row" style="justify-content: flex-end;">
-                        <button class="btn-outline btn-sm" /" ~ link.slug) }}')"><i class="fas fa-copy"></i></button>
-                        <a href="/dashboard/qr_view/{{ link.slug }}" class="btn-outline btn-sm"><i
-                                class="fas fa-qrcode"></i></a>
-                        <a href="/dashboard/stats/{{ link.slug }}" class="btn-outline btn-sm"><i
-                                class="fas fa-chart-line"></i></a>
-                        <a href="/dashboard/edit/{{ link.slug }}" class="btn-outline btn-sm"><i
-                                class="fas fa-edit"></i></a>
-
-                        <form method="POST" action="/dashboard/delete/{{ link.id }}"
-                            onsubmit="return confirm('Delete?');" style="display:inline;">
+                    <form method="POST" action="/dashboard/delete/{{ link.id }}" onsubmit="return confirm('Delete?');"
+                        style="display:inline;">
 
 
-                            {{ csrf_token() }}
-                            <button type="submit" class="btn-sm btn-danger"><i class="fas fa-trash"></i></button>
-                        </form>
-                    </div>
-                </td>
+                        {{ csrf_token() }}
+                        <button type="submit" class="btn-sm btn-danger"><i class="fas fa-trash"></i></button>
+                    </form>
+                </div>
+            </td>
             </tr>
             {% endfor %}
-        </tbody>
-    </table>
+            </tbody>
+            </table>
 </div>
 
 <script>
