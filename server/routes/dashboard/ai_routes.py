@@ -5,7 +5,7 @@ import re
 
 from ...models import Lead, Visit
 from ...extensions import db, log_queue
-from ...ai_engine import ai
+
 from ...config import Config
 
 bp = Blueprint('dashboard_ai', __name__)

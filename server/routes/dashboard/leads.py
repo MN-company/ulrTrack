@@ -8,7 +8,7 @@ from collections import defaultdict
 from ...models import Lead, Visit
 from ...extensions import db, log_queue
 from ...config import Config
-from ...ai_engine import ai
+
 from ...utils import email_permutations, get_gravatar_profile
 
 bp = Blueprint('dashboard_leads', __name__)
