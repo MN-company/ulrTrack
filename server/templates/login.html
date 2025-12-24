@@ -1,97 +1,161 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
 
-{% block head %}
-<style>
-    .login-container {
-        max-width: 400px;
-        margin: 100px auto;
-    }
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Overwatch | Login</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    .login-card {
-        background: var(--surface-color);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        padding: 40px;
-        text-align: center;
-    }
+    <style>
+        :root {
+            --bg-dark: #0f111a;
+            --accent-primary: #3b82f6;
+            --text-primary: #e2e8f0;
+            --glass-bg: rgba(22, 27, 34, 0.8);
+            --border-subtle: #30363d;
+        }
 
-    .login-title {
-        font-size: 1.8rem;
-        font-weight: 700;
-        margin-bottom: 10px;
-        color: var(--accent);
-        text-transform: uppercase;
-        letter-spacing: 2px;
-    }
+        body {
+            background-color: var(--bg-dark);
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 20%);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            overflow: hidden;
+        }
 
-    .login-subtitle {
-        color: var(--text-sec);
-        margin-bottom: 30px;
-        font-size: 0.9rem;
-    }
+        .login-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-subtle);
+            padding: 3rem;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
 
-    .input-group {
-        margin-bottom: 20px;
-        text-align: left;
-    }
+        .brand {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            letter-spacing: -0.02em;
+        }
 
-    .input-group label {
-        display: block;
-        color: var(--text-sec);
-        font-size: 0.85rem;
-        margin-bottom: 8px;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
+        .brand span {
+            color: var(--accent-primary);
+        }
 
-    .login-btn {
-        width: 100%;
-        padding: 15px;
-        margin-top: 10px;
-    }
+        .input-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
 
-    .logo-container {
-        margin-bottom: 30px;
-    }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
 
-    .logo-icon {
-        font-size: 3rem;
-        color: var(--accent);
-    }
-</style>
-{% endblock %}
+        input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: #0d1117;
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            transition: all 0.2s;
+            box-sizing: border-box;
+        }
 
-{% block content %}
-<div class="login-container">
+        input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 0.85rem;
+            background: var(--accent-primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+
+        .flash {
+            padding: 0.75rem;
+            border-radius: 6px;
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+
+<body>
+
     <div class="login-card">
-        <div class="logo-container">
-            <i class="fas fa-shield-alt logo-icon"></i>
+        <div class="brand">
+            <i class="fa-solid fa-eye"></i> OVERWATCH
         </div>
-        <div class="login-title">STEALTH<span style="color: white;">V35</span></div>
-        <div class="login-subtitle">Admin Dashboard Access</div>
+
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        {% for message in messages %}
+        <div class="flash">{{ message }}</div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
 
         <form method="POST">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <div class="input-group">
-                <label for="username"><i class="fas fa-user"></i> Username</label>
-                <input type="text" id="username" name="username" required autofocus>
+                <label>Operator ID</label>
+                <input type="text" name="username" placeholder="Username" required autofocus>
             </div>
 
             <div class="input-group">
-                <label for="password"><i class="fas fa-lock"></i> Password</label>
-                <input type="password" id="password" name="password" required>
+                <label>Passphrase</label>
+                <input type="password" name="password" placeholder="••••••••" required>
             </div>
 
-            <button type="submit" class="btn login-btn">
-                <i class="fas fa-sign-in-alt"></i> Login
-            </button>
+            <button type="submit" class="btn">Authenticate</button>
         </form>
 
-        <div style="margin-top: 20px; font-size: 0.75rem; color: var(--text-muted);">
-            <i class="fas fa-info-circle"></i> First time? Run <code
-                style="color: var(--accent);">python server/create_admin.py</code>
+        <div style="margin-top: 2rem; font-size: 0.8rem; color: #64748b;">
+            SECURE ACCESS ONLY <br>
+            UNAUTHORIZED ACCESS IS PROHIBITED
         </div>
     </div>
-</div>
-{% endblock %}
+
+</body>
+
+</html>
