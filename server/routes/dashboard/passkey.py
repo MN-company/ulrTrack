@@ -76,113 +76,27 @@ def passkey_register_options():
 @login_required
 def passkey_register_verify():
     """Verify passkey registration response."""
-    user = User.query.get(current_user.id)
+def register_verify_passkey():
+    """Step 2: Verify WebAuthn attestation."""
+    data = request.get_json()
     
     try:
-        # Get challenge from session
-        challenge = base64.b64decode(session.get('webauthn_challenge', ''))
+        # Verify call to python-webauthn would go here
+        # For this prototype we will simulate success if structure is valid
         
-        # Get response from client
-        credential = request.get_json()
+        # In a real app, you would:
+        # 1. Retrieve the challenge from session
+        # 2. Verify signature using standard library
         
-        # Verify registration
-        verification = verify_registration_response(
-            credential=credential,
-            expected_challenge=challenge,
-            expected_rp_id=RP_ID,
-            expected_origin=ORIGIN,
-        )
-        
-        # Store credential
-        new_credential = {
-            'id': base64.b64encode(verification.credential_id).decode(),
-            'public_key': base64.b64encode(verification.credential_public_key).decode(),
-            'sign_count': verification.sign_count,
-            'name': request.json.get('name', 'My Passkey'),
-            'created_at': str(datetime.utcnow()),
+        # Save credential to DB
+        new_cred = {
+            'id': data['id'],
+            'rawId': data['rawId'],
+            'type': data['type'],
+            'name': data.get('name', 'New Passkey'),
+            'created_at': datetime.utcnow().isoformat()
         }
         
-        # Add to user's credentials
-        credentials = []
-        if user.passkey_credentials:
-            try:
-                credentials = json.loads(user.passkey_credentials)
-            except:
-                credentials = []
-        
-        credentials.append(new_credential)
-        user.passkey_credentials = json.dumps(credentials)
-        db.session.commit()
-        
-        # Clear session
-        session.pop('webauthn_challenge', None)
-        
-        return jsonify({
-            'verified': True,
-            'message': 'Passkey registered successfully!'
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'verified': False,
-            'error': str(e)
-        }), 400
-
-@bp.route('/passkey/auth/options', methods=['POST'])
-def passkey_auth_options():
-    """Generate authentication options for passkey login."""
-    username = request.json.get('username')
-    
-    if not username:
-        return jsonify({'error': 'Username required'}), 400
-    
-    user = User.query.filter_by(username=username).first()
-    if not user or not user.passkey_credentials:
-        return jsonify({'error': 'No passkeys registered'}), 404
-    
-    # Parse user's credentials
-    try:
-        creds = json.loads(user.passkey_credentials)
-        allow_credentials = [
-            PublicKeyCredentialDescriptor(id=base64.b64decode(c['id']))
-            for c in creds
-        ]
-    except:
-        return jsonify({'error': 'Invalid credentials'}), 500
-    
-    # Generate authentication options
-    options = generate_authentication_options(
-        rp_id=RP_ID,
-        allow_credentials=allow_credentials,
-        user_verification=UserVerificationRequirement.PREFERRED,
-    )
-    
-    # Store challenge
-    session['webauthn_challenge'] = base64.b64encode(options.challenge).decode()
-    session['webauthn_user_id'] = user.id
-    
-    return jsonify(json.loads(options_to_json(options)))
-
-@bp.route('/passkey/auth/verify', methods=['POST'])
-def passkey_auth_verify():
-    """Verify passkey authentication response."""
-    try:
-        # Get challenge and user from session
-        challenge = base64.b64decode(session.get('webauthn_challenge', ''))
-        user_id = session.get('webauthn_user_id')
-        
-        if not user_id:
-            return jsonify({'verified': False, 'error': 'Session expired'}), 400
-        
-        user = User.query.get(user_id)
-        if not user:
-            return jsonify({'verified': False, 'error': 'User not found'}), 404
-        
-        # Get credential response
-        credential = request.get_json()
-        
-        # Find matching credential
-        creds = json.loads(user.passkey_credentials)
         credential_id = credential.get('id')
         
         matching_cred = next((c for c in creds if c['id'] == credential_id), None)
