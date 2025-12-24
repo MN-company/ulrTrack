@@ -1,4 +1,5 @@
-from flask import Blueprint, request, jsonify, datetime
+from flask import Blueprint, request, jsonify
+from datetime import datetime
 import json
 from flask_login import login_required
 from ..extensions import log_queue, db, limiter, csrf
