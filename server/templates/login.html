@@ -71,7 +71,7 @@
         <div class="login-subtitle">Admin Dashboard Access</div>
 
         <form method="POST">
-            {{ csrf_token() }}
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
 
             <div class="input-group">
                 <label for="username"><i class="fas fa-user"></i> Username</label>
