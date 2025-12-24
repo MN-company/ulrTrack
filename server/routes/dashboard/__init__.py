@@ -12,6 +12,7 @@ from .ai_routes import bp as ai_bp
 from .architect import bp as architect_bp
 from .exports import bp as exports_bp
 from .stats import bp as stats_bp
+from .security import bp as security_bp
 
 # Create main dashboard blueprint
 bp = Blueprint('dashboard', __name__, url_prefix='/dashboard')
@@ -23,6 +24,7 @@ bp.register_blueprint(ai_bp)
 bp.register_blueprint(architect_bp)
 bp.register_blueprint(exports_bp)
 bp.register_blueprint(stats_bp)
+bp.register_blueprint(security_bp)
 
 # Add shared template filter
 def md5_filter(s):

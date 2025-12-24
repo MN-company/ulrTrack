@@ -12,7 +12,6 @@ Pillow
 orjson
 google-genai
 holehe
-blackbird-osint
 httpx
 flask-wtf
 bcrypt

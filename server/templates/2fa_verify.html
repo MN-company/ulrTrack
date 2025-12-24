@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    .verify-container {
+        max-width: 450px;
+        margin: 100px auto;
+    }
+
+    .verify-card {
+        background: var(--surface-color);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 40px;
+        text-align: center;
+    }
+
+    .verify-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 10px;
+        color: var(--accent);
+    }
+
+    .verify-subtitle {
+        color: var(--text-sec);
+        margin-bottom: 30px;
+        font-size: 0.9rem;
+    }
+
+    .code-input {
+        font-size: 1.5rem;
+        text-align: center;
+        letter-spacing: 8px;
+        font-family: var(--font-mono);
+        padding: 15px;
+    }
+
+    .verify-btn {
+        width: 100%;
+        padding: 15px;
+        margin-top: 15px;
+    }
+
+    .method-divider {
+        margin: 25px 0;
+        color: var(--text-muted);
+        font-size: 0.8rem;
+        text-transform: uppercase;
+    }
+
+    .backup-toggle {
+        margin-top: 15px;
+        font-size: 0.85rem;
+        color: var(--accent);
+        cursor: pointer;
+    }
+
+    .backup-toggle:hover {
+        text-decoration: underline;
+    }
+
+    .backup-form {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="verify-container">
+    <div class="verify-card">
+        <div style="font-size: 2.5rem; color: var(--accent); margin-bottom: 20px;">
+            <i class="fas fa-mobile-alt"></i>
+        </div>
+
+        <div class="verify-title">Two-Factor Authentication</div>
+        <div class="verify-subtitle">
+            Logged in as: <strong>{{ username }}</strong>
+        </div>
+
+        <!-- TOTP Code Form -->
+        <form method="POST" id="totpForm">
+            {{ csrf_token() }}
+
+            <div class="input-group">
+                <label for="totp_code">
+                    <i class="fas fa-key"></i> Enter 6-digit code from your authenticator app
+                </label>
+                <input type="text" id="totp_code" name="totp_code" class="code-input" maxlength="6" pattern="[0-9]{6}"
+                    inputmode="numeric" autocomplete="one-time-code" required autofocus>
+            </div>
+
+            <button type="submit" class="btn verify-btn">
+                <i class="fas fa-check"></i> Verify Code
+            </button>
+        </form>
+
+        <!-- Divider -->
+        <div class="method-divider">— OR —</div>
+
+        <!-- Backup Code Toggle -->
+        <div class="backup-toggle" onclick="toggleBackupForm()">
+            <i class="fas fa-life-ring"></i> Use backup code instead
+        </div>
+
+        <!-- Backup Code Form (hidden by default) -->
+        <form method="POST" id="backupForm" class="backup-form">
+            {{ csrf_token() }}
+
+            <div class="input-group">
+                <label for="backup_code">
+                    <i class="fas fa-key"></i> Enter backup code
+                </label>
+                <input type="text" id="backup_code" name="backup_code" style="font-family: var(--font-mono);"
+                    placeholder="XXXX-XXXX-XXXX">
+            </div>
+
+            <button type="submit" class="btn verify-btn">
+                <i class="fas fa-check"></i> Use Backup Code
+            </button>
+
+            <div class="backup-toggle" onclick="toggleBackupForm()" style="margin-top: 15px;">
+                <i class="fas fa-arrow-left"></i> Back to authenticator
+            </div>
+        </form>
+
+        <!-- Passkey Option (if available) -->
+        {% if has_passkey %}
+        <div class="method-divider" style="margin-top: 30px;">— OR —</div>
+        <button onclick="usePasskey()" class="btn-outline" style="width: 100%; padding: 12px;">
+            <i class="fas fa-fingerprint"></i> Use Passkey / Biometric
+        </button>
+        {% endif %}
+
+        <!-- Cancel Link -->
+        <div style="margin-top: 25px;">
+            <a href="/login" style="color: var(--text-muted); font-size: 0.85rem;">
+                <i class="fas fa-times"></i> Cancel & start over
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleBackupForm() {
+        const totpForm = document.getElementById('totpForm');
+        const backupForm = document.getElementById('backupForm');
+
+        if (backupForm.style.display === 'none' || !backupForm.style.display) {
+            totpForm.style.display = 'none';
+            backupForm.style.display = 'block';
+            document.getElementById('backup_code').focus();
+        } else {
+            totpForm.style.display = 'block';
+            backupForm.style.display = 'none';
+            document.getElementById('totp_code').focus();
+        }
+    }
+
+    async function usePasskey() {
+        alert('Passkey authentication coming soon! Use TOTP code for now.');
+        // TODO: WebAuthn implementation
+    }
+
+    // Auto-submit when 6 digits entered
+    document.getElementById('totp_code').addEventListener('input', function (e) {
+        if (this.value.length === 6) {
+            setTimeout(() => {
+                document.getElementById('totpForm').submit();
+            }, 300);
+        }
+    });
+</script>
+{% endblock %}

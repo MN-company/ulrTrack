@@ -117,15 +117,31 @@ Follow the interactive wizard to:
 
 Blackbird is used for advanced OSINT scanning of captured email addresses.
 
-### Setup Blackbird
+> [!IMPORTANT]
+> Blackbird is **NOT** in requirements.txt because it's a GitHub repository, not a PyPI package.
+> You must install it manually using the steps below.
+
+### Manual Setup (Required)
 ```bash
+# Clone the repository
 git clone https://github.com/p1ngul1n0/blackbird
 cd blackbird
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### Usage
-Once installed, the system will automatically use Blackbird for deep username searches when you trigger OSINT scans from the Contacts page.
+### Integration
+Once installed, ulrTrack will automatically detect and use Blackbird when you:
+1. Go to Contacts page
+2. Click "Blackbird Scan" button on a lead
+3. The system runs `blackbird/blackbird.py` with the username
+
+### Troubleshooting
+If Blackbird scans fail:
+- Verify `blackbird/` directory exists in project root
+- Check `blackbird/blackbird.py` is executable
+- Ensure all Blackbird dependencies are installed
 
 ---
 

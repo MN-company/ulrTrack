@@ -1,33 +1,97 @@
 {% extends "base.html" %}
 
+{% block head %}
+<style>
+    .login-container {
+        max-width: 400px;
+        margin: 100px auto;
+    }
+
+    .login-card {
+        background: var(--surface-color);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 40px;
+        text-align: center;
+    }
+
+    .login-title {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin-bottom: 10px;
+        color: var(--accent);
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
+
+    .login-subtitle {
+        color: var(--text-sec);
+        margin-bottom: 30px;
+        font-size: 0.9rem;
+    }
+
+    .input-group {
+        margin-bottom: 20px;
+        text-align: left;
+    }
+
+    .input-group label {
+        display: block;
+        color: var(--text-sec);
+        font-size: 0.85rem;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .login-btn {
+        width: 100%;
+        padding: 15px;
+        margin-top: 10px;
+    }
+
+    .logo-container {
+        margin-bottom: 30px;
+    }
+
+    .logo-icon {
+        font-size: 3rem;
+        color: var(--accent);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div style="display: flex; justify-content: center; align-items: center; height: 70vh;">
-    <div class="card" style="width: 100%; max-width: 400px; text-align: center;">
-        <h2 style="margin-bottom: 20px; font-weight: 300;">ACCESS <span class="text-accent">TERMINAL</span></h2>
+<div class="login-container">
+    <div class="login-card">
+        <div class="logo-container">
+            <i class="fas fa-shield-alt logo-icon"></i>
+        </div>
+        <div class="login-title">STEALTH<span style="color: white;">V35</span></div>
+        <div class="login-subtitle">Admin Dashboard Access</div>
 
-        <form method="POST" action="/login">
-
-
+        <form method="POST">
             {{ csrf_token() }}
-            <div style="margin-bottom: 20px;">
-                <input type="password" name="api_key" placeholder="Enter API Key" required
-                    style="text-align: center; font-size: 1.1rem; letter-spacing: 2px;">
+
+            <div class="input-group">
+                <label for="username"><i class="fas fa-user"></i> Username</label>
+                <input type="text" id="username" name="username" required autofocus>
             </div>
 
-            <!-- Fake Captcha for V1 Visuals (User requested layout) -->
-            <!-- Real Cloudflare Turnstile -->
-            <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-            <div class="cf-turnstile" data-sitekey="{{ site_key }}" data-theme="dark"></div>
-
-            <button type="submit" class="btn" style="width: 100%; margin-top: 20px;">ENTER DASHBOARD</button>
-
-            <div style="margin-top: 20px; text-align: center; color: var(--text-sec); font-size: 0.8rem;">
-                <i class="fas fa-shield-alt"></i> Protected by Cloudflare
+            <div class="input-group">
+                <label for="password"><i class="fas fa-lock"></i> Password</label>
+                <input type="password" id="password" name="password" required>
             </div>
+
+            <button type="submit" class="btn login-btn">
+                <i class="fas fa-sign-in-alt"></i> Login
+            </button>
         </form>
 
-        <p style="margin-top: 20px; font-size: 0.8rem; color: var(--text-sec);">Restricted Area. Authorized Personnel
-            Only.</p>
+        <div style="margin-top: 20px; font-size: 0.75rem; color: var(--text-muted);">
+            <i class="fas fa-info-circle"></i> First time? Run <code
+                style="color: var(--accent);">python server/create_admin.py</code>
+        </div>
     </div>
 </div>
 {% endblock %}

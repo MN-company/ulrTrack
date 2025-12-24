@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    .backup-container {
+        max-width: 600px;
+        margin: 50px auto;
+    }
+
+    .backup-card {
+        background: var(--surface-color);
+        border: 2px solid var(--accent);
+        border-radius: 12px;
+        padding: 40px;
+    }
+
+    .warning-box {
+        background: rgba(255, 193, 7, 0.1);
+        border: 1px solid #ffc107;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 20px 0;
+    }
+
+    .codes-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+        margin: 30px 0;
+    }
+
+    .code-item {
+        background: var(--bg-color);
+        border: 1px solid var(--border-color);
+        padding: 15px;
+        border-radius: 6px;
+        font-family: var(--font-mono);
+        font-size: 1.1rem;
+        color: var(--accent);
+        text-align: center;
+        letter-spacing: 2px;
+    }
+
+    .download-btn {
+        margin-top: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="backup-container">
+    <div class="backup-card">
+        <h2 style="color: var(--accent); margin-bottom: 10px;">
+            <i class="fas fa-key"></i> Backup Recovery Codes
+        </h2>
+
+        <div class="warning-box">
+            <strong style="color: #ffc107;"><i class="fas fa-exclamation-triangle"></i> Important!</strong>
+            <p style="margin-top: 10px; color: var(--text-main);">
+                Save these backup codes in a safe place. Each code can only be used once.
+                You can use them to access your account if you lose access to your authenticator app.
+            </p>
+        </div>
+
+        <p style="color: var(--text-sec); margin-bottom: 20px;">
+            <strong>{{ backup_codes|length }}</strong> backup codes generated
+        </p>
+
+        <div class="codes-grid">
+            {% for code in backup_codes %}
+            <div class="code-item">
+                {{ code[:4] }}-{{ code[4:8] }}-{{ code[8:] }}
+            </div>
+            {% endfor %}
+        </div>
+
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="downloadCodes()" class="btn">
+                <i class="fas fa-download"></i> Download as TXT
+            </button>
+
+            <button onclick="printCodes()" class="btn-outline">
+                <i class="fas fa-print"></i> Print
+            </button>
+
+            <button onclick="copyCodes()" class="btn-outline">
+                <i class="fas fa-copy"></i> Copy to Clipboard
+            </button>
+        </div>
+
+        <div style="margin-top: 40px; text-align: center;">
+            <a href="/dashboard/security" class="btn" style="padding: 15px 40px;">
+                <i class="fas fa-check"></i> I've Saved My Codes
+            </a>
+        </div>
+
+        <p style="margin-top: 20px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+            You can regenerate new backup codes anytime from Security Settings
+        </p>
+    </div>
+</div>
+
+<script>
+    const codes = {{ backup_codes| tojson }};
+
+    function downloadCodes() {
+        const formatted = codes.map((c, i) => `${i + 1}. ${c.slice(0, 4)}-${c.slice(4, 8)}-${c.slice(8)}`).join('\\n');
+        const text = `ULRTrack Backup Recovery Codes\\n` +
+            `Generated: ${new Date().toLocaleString()}\\n\\n` +
+            `KEEP THESE CODES SAFE!\\n` +
+            `Each code can only be used once.\\n\\n` +
+            formatted;
+
+        const blob = new Blob([text], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'ulrtrack-backup-codes.txt';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function printCodes() {
+        window.print();
+    }
+
+    function copyCodes() {
+        const formatted = codes.map(c => `${c.slice(0, 4)}-${c.slice(4, 8)}-${c.slice(8)}`).join('\\n');
+        navigator.clipboard.writeText(formatted).then(() => {
+            alert('Backup codes copied to clipboard!');
+        });
+    }
+</script>
+{% endblock %}

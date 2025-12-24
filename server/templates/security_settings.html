@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 style="color: var(--accent); margin-bottom: 30px;">
+    <i class="fas fa-shield-alt"></i> Security Settings
+</h2>
+
+<!-- 2FA Status Card -->
+<div class="card">
+    <h3 style="margin-bottom: 20px;">
+        <i class="fas fa-mobile-alt"></i> Two-Factor Authentication
+    </h3>
+
+    {% if user.totp_enabled %}
+    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+        <span class="badge badge-green" style="font-size: 1rem; padding: 8px 16px;">
+            <i class="fas fa-check-circle"></i> ENABLED
+        </span>
+        <span style="color: var(--text-sec);">
+            Your account is protected with 2FA
+        </span>
+    </div>
+
+    <p style="color: var(--text-sec); margin-bottom: 20px;">
+        <i class="fas fa-life-ring"></i> You have <strong>{{ backup_count }}</strong> backup codes remaining
+    </p>
+
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <form method="POST" action="/dashboard/security/2fa/regenerate_backup" style="display: inline;">
+            {{ csrf_token() }}
+            <button type="submit" class="btn-outline btn-sm">
+                <i class="fas fa-sync"></i> Regenerate Backup Codes
+            </button>
+        </form>
+
+        <button onclick="showDisableConfirm()" class="btn-danger btn-sm">
+            <i class="fas fa-times-circle"></i> Disable 2FA
+        </button>
+    </div>
+
+    <!-- Disable Confirmation (hidden by default) -->
+    <div id="disableConfirm"
+        style="display: none; margin-top: 20px; padding: 20px; background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); border-radius: 8px;">
+        <p style="color: var(--danger); margin-bottom: 15px;">
+            <strong><i class="fas fa-exclamation-triangle"></i> Are you sure?</strong><br>
+            Disabling 2FA will make your account less secure.
+        </p>
+        <form method="POST" action="/dashboard/security/2fa/disable">
+            {{ csrf_token() }}
+            <div class="input-group" style="margin-bottom: 15px;">
+                <label for="password">Enter your password to confirm:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button type="submit" class="btn-danger">
+                    <i class="fas fa-check"></i> Yes, Disable 2FA
+                </button>
+                <button type="button" onclick="hideDisableConfirm()" class="btn-outline">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {% else %}
+    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+        <span class="badge badge-gray" style="font-size: 1rem; padding: 8px 16px;">
+            <i class="fas fa-times-circle"></i> DISABLED
+        </span>
+        <span style="color: var(--text-sec);">
+            2FA is not enabled
+        </span>
+    </div>
+
+    <p style="color: var(--text-sec); margin-bottom: 20px;">
+        Protect your account with an authenticator app (Google Authenticator, Authy, etc.)
+    </p>
+
+    <a href="/dashboard/security/2fa/setup" class="btn">
+        <i class="fas fa-plus"></i> Enable 2FA
+    </a>
+    {% endif %}
+</div>
+
+<!-- Passkey Card (Coming Soon) -->
+<div class="card">
+    <h3 style="margin-bottom: 20px;">
+        <i class="fas fa-fingerprint"></i> Passkey / Biometric Login
+    </h3>
+
+    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+        <span class="badge badge-gray" style="font-size: 1rem; padding: 8px 16px;">
+            COMING SOON
+        </span>
+        <span style="color: var(--text-sec);">
+            WebAuthn passkey support in development
+        </span>
+    </div>
+
+    <p style="color: var(--text-muted); font-size: 0.9rem;">
+        Passkeys allow you to login using your device's biometric authentication (fingerprint, Face ID) or security key.
+    </p>
+</div>
+
+<!-- Change Password Card -->
+<div class="card">
+    <h3 style="margin-bottom: 20px;">
+        <i class="fas fa-key"></i> Change Password
+    </h3>
+
+    <p style="color: var(--text-sec); margin-bottom: 20px;">
+        Update your admin password
+    </p>
+
+    <button onclick="alert('Password change feature coming soon!')" class="btn-outline">
+        <i class="fas fa-edit"></i> Change Password
+    </button>
+</div>
+
+<script>
+    function showDisableConfirm() {
+        document.getElementById('disableConfirm').style.display = 'block';
+    }
+
+    function hideDisableConfirm() {
+        document.getElementById('disableConfirm').style.display = 'none';
+    }
+</script>
+
+{% endblock %}
