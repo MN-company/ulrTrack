@@ -14,23 +14,29 @@ def start_worker(app):
         """Core logic for processing a single task."""
         try:
             with app.app_context():
-                if task['type'] == 'log_visit':
-                    data = task['data']
-                    visit = Visit(**data)
+                if task['type'] == 'enrich_visit':
+                    visit_id = task.get('visit_id')
+                    ip = task.get('ip')
                     
-                    # Ghost Correlation
-                    if not visit.email and data.get('canvas_hash'):
-                        ch = data.get('canvas_hash')
-                        match = Visit.query.filter(Visit.canvas_hash == ch, Visit.email != None).order_by(Visit.timestamp.desc()).first()
-                        if match:
-                            visit.email = match.email
-                            print(f"👻 GHOST CORRELATION: Anonymous user identified as {match.email}")
+                    visit = Visit.query.get(visit_id)
+                    if visit:
+                        # slow reverse dns
+                        from .utils import get_reverse_dns
+                        hostname = get_reverse_dns(ip)
+                        if hostname:
+                            visit.hostname = hostname
                             
-                    db.session.add(visit)
-                    db.session.commit()
-                    # print(f"ASYNC LOG: Visit Saved ID={visit.id}")
+                        # Ghost Correlation
+                        if not visit.email and visit.canvas_hash:
+                            ch = visit.canvas_hash
+                            match = Visit.query.filter(Visit.canvas_hash == ch, Visit.email != None).order_by(Visit.timestamp.desc()).first()
+                            if match:
+                                visit.email = match.email
+                                print(f"👻 GHOST CORRELATION: Anonymous user identified as {match.email}")
+                                
+                        db.session.commit()
 
-                elif task['type'] == 'osint' and 'email' in task:
+                elif task['type'] == 'log_visit':
                     email = task['email']
                     print(f"ASYNC OSINT: Starting scan for {email}")
                     lead = Lead.query.filter_by(email=email).first()

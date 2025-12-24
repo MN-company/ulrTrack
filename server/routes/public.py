@@ -6,7 +6,7 @@ import hashlib
 
 from ..models import Link, Visit
 from ..extensions import db, limiter
-from ..utils import get_geo_data, is_bot_ua, verify_turnstile, get_reverse_dns, parse_referrer
+from ..utils import get_geo_data, is_bot_ua, verify_turnstile, parse_referrer
 from ..config import Config
 
 bp = Blueprint('public', __name__)
@@ -34,18 +34,17 @@ def redirect_to_url(slug):
     client_ip = request.headers.get('X-Real-IP', request.remote_addr)
     ua_string = request.user_agent.string
     user_agent = parse(ua_string)
+    
+    # Critical: Geo Data needed for blocking (Cached)
     geo = get_geo_data(client_ip)
     
-    
     # V27: ETag Zombie Cookie Logic
-    # 1. Check if browser sent an ETag (If-None-Match)
     client_etag = request.headers.get('If-None-Match')
     if not client_etag:
-        # Generate new ETag ID
         import uuid
         client_etag = str(uuid.uuid4())
     
-    # 2. Save to Visit
+    # 2. Save minimal Visit (Fast)
     visit = Visit(
         link_id=link.id,
         ip_address=client_ip,
@@ -54,16 +53,22 @@ def redirect_to_url(slug):
         os_family=user_agent.os.family,
         device_type="Mobile" if user_agent.is_mobile else "Tablet" if user_agent.is_tablet else "Desktop",
         isp=geo.get('isp'),
-        org=geo.get('org'), # V28 Identity
-        hostname=get_reverse_dns(client_ip), # V29 Reverse DNS
-        city=geo.get('city'),
+        org=geo.get('org'),
         country=geo.get('country'),
+        city=geo.get('city'),
         lat=geo.get('lat'),
         lon=geo.get('lon'),
-        etag=client_etag # Save the Zombie ID
+        etag=client_etag
     )
     db.session.add(visit)
     db.session.commit()
+    
+    # Async Enrichment (DNS, etc)
+    from ..extensions import log_queue
+    try:
+        log_queue.put({'type': 'enrich_visit', 'visit_id': visit.id, 'ip': client_ip})
+    except:
+        pass
     
     # Checks
     final_dest = link.destination
