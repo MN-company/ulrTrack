@@ -1,126 +1,164 @@
 from . import db
 from datetime import datetime
+from typing import Optional, List, Dict, Any
 from flask_login import UserMixin
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import String, Text, Integer, Boolean, Float, DateTime, ForeignKey
+import json
 
-# V17/V18: Leads & Contacts
-class Lead(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    name = db.Column(db.String(100))
-    notes = db.Column(db.Text)
-    holehe_data = db.Column(db.Text) # JSON list of sites
-    scan_status = db.Column(db.String(20), default='idle') # idle, pending, completed, failed
-    last_scan = db.Column(db.DateTime, nullable=True)
-    
-    # V22: Contacts Overhaul
-    tags = db.Column(db.String(256), default='') # Comma separate tags: "vip, suspect"
-    custom_fields = db.Column(db.Text, default='{}') # JSON for extra data
-    
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+class DatabaseModel(db.Model):
+    """Base model with common helpers."""
+    __abstract__ = True
 
-class Link(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    slug = db.Column(db.String(20), unique=True, nullable=False)
-    destination = db.Column(db.String(2048), nullable=False)
-    
-    # Security & Access
-    password_hash = db.Column(db.String(128), nullable=True)
-    enable_captcha = db.Column(db.Boolean, default=False)
-    max_clicks = db.Column(db.Integer, nullable=True)
-    expire_date = db.Column(db.DateTime, nullable=True)
-    
-    # Advanced Routing & Cloaking (V8)
-    ios_url = db.Column(db.String(2048), nullable=True)
-    android_url = db.Column(db.String(2048), nullable=True)
-    safe_url = db.Column(db.String(2048), nullable=True) # Cloaking URL
-    block_vpn = db.Column(db.Boolean, default=False)
-    block_bots = db.Column(db.Boolean, default=True)
-    allow_no_js = db.Column(db.Boolean, default=False)
-    
-    # V10: Smart Scheduling
-    schedule_start_hour = db.Column(db.Integer, nullable=True) # 0-23
-    schedule_end_hour = db.Column(db.Integer, nullable=True)   # 0-23
-    schedule_timezone = db.Column(db.String(32), default='UTC')
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert model to dictionary."""
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
-    # V13: Advanced Filters
-    block_adblock = db.Column(db.Boolean, default=False)
-    allowed_countries = db.Column(db.String(50), nullable=True) # e.g. "IT,US"
+class Lead(DatabaseModel):
+    """Lead model with improved type hinting and JSON handling."""
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
+    name: Mapped[Optional[str]] = mapped_column(String(100))
+    notes: Mapped[Optional[str]] = mapped_column(Text)
     
-    # V14: Parity Features
-    public_masked_url = db.Column(db.String(512), nullable=True) # is.gd result
-    max_clicks = db.Column(db.Integer, default=0)
-    expiration_minutes = db.Column(db.Integer, default=0)
+    # JSON Fields
+    holehe_data: Mapped[Optional[str]] = mapped_column(Text) 
+    scan_status: Mapped[str] = mapped_column(String(20), default='idle')
+    last_scan: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     
-    # V16: Email Gate
-    require_email = db.Column(db.Boolean, default=False)
-    email_policy = db.Column(db.String(20), default='all') # all, certified, trackable
+    tags: Mapped[Optional[str]] = mapped_column(String(256), default='')
+    custom_fields: Mapped[Optional[str]] = mapped_column(Text, default='{}')
     
-    
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # V38 AI Architect
-    custom_html = db.Column(db.Text, nullable=True)
-    
-    visits = db.relationship('Visit', backref='link', lazy=True)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
 
-class Visit(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    link_id = db.Column(db.Integer, db.ForeignKey('link.id'), nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    ip_address = db.Column(db.String(45))
-    user_agent = db.Column(db.String(500))
-    referrer = db.Column(db.String(500))
-    is_suspicious = db.Column(db.Boolean, default=False)
-    
-    # Granular Tracking
-    os_family = db.Column(db.String(64))
-    device_type = db.Column(db.String(64))
-    
-    # Deep Tracking (Geo & ISP)
-    isp = db.Column(db.String(128))
-    org = db.Column(db.String(128)) # V28 Identity
-    hostname = db.Column(db.String(256), nullable=True) # V29 Reverse DNS
-    city = db.Column(db.String(64))
-    country = db.Column(db.String(64))
-    lat = db.Column(db.Float)
-    lon = db.Column(db.Float)
-    
-    # Client-Side Beacon Data (V8/V9)
-    screen_res = db.Column(db.String(32))
-    timezone = db.Column(db.String(64))
-    browser_bot = db.Column(db.Boolean, default=False)
-    browser_language = db.Column(db.String(10)) # V9
-    adblock = db.Column(db.Boolean, default=False) # V9
-    # V15 AI Analysis
-    ai_summary = db.Column(db.String(512), nullable=True) # "iPad Pro 12.9 (2022) - WiFi"
-    
-    # V16 Deep Fingerprinting & Data
-    canvas_hash = db.Column(db.String(64), nullable=True)
-    webgl_renderer = db.Column(db.String(256), nullable=True)
-    email = db.Column(db.String(256), nullable=True)
+    @property
+    def custom_fields_data(self) -> Dict[str, Any]:
+        """Auto-deserialized custom fields."""
+        if not self.custom_fields: return {}
+        try: return json.loads(self.custom_fields)
+        except: return {}
 
-    # V24 Pro Fingerprinting
-    battery_level = db.Column(db.String(20), nullable=True)
-    cpu_cores = db.Column(db.Integer, nullable=True)
-    ram_gb = db.Column(db.Float, nullable=True)
+    @custom_fields_data.setter
+    def custom_fields_data(self, value: Dict[str, Any]):
+        self.custom_fields = json.dumps(value)
 
-    # V27 Zombie Cookie
-    etag = db.Column(db.String(64), nullable=True)
-    
-    # V39 Session Detector
-    detected_sessions = db.Column(db.Text, nullable=True) # JSON list
+    @property
+    def holehe_sites(self) -> List[str]:
+        """Auto-deserialized holehe sites."""
+        if not self.holehe_data: return []
+        try: return json.loads(self.holehe_data)
+        except: return []
 
-# V51: Database-backed User Model with 2FA
-class User(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(200), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+class Link(DatabaseModel):
+    """Link model with full typing."""
+    id: Mapped[int] = mapped_column(primary_key=True)
+    slug: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
+    destination: Mapped[str] = mapped_column(String(2048), nullable=False)
     
-    # 2FA/TOTP Authentication (Optional)
-    totp_secret = db.Column(db.String(32), nullable=True)  # Base32 encoded secret
-    totp_enabled = db.Column(db.Boolean, default=False)
-    backup_codes = db.Column(db.Text, nullable=True)  # JSON array of hashed backup codes
+    # Security
+    password_hash: Mapped[Optional[str]] = mapped_column(String(128))
+    enable_captcha: Mapped[bool] = mapped_column(Boolean, default=False)
+    max_clicks: Mapped[Optional[int]] = mapped_column(Integer, default=0)
+    expire_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    expiration_minutes: Mapped[int] = mapped_column(Integer, default=0)
     
-    # Passkey/WebAuthn (Optional)
-    passkey_credentials = db.Column(db.Text, nullable=True)  # JSON array of WebAuthn credentials
+    # Routing / Cloaking
+    ios_url: Mapped[Optional[str]] = mapped_column(String(2048))
+    android_url: Mapped[Optional[str]] = mapped_column(String(2048))
+    safe_url: Mapped[Optional[str]] = mapped_column(String(2048))
+    block_vpn: Mapped[bool] = mapped_column(Boolean, default=False)
+    block_bots: Mapped[bool] = mapped_column(Boolean, default=True)
+    allow_no_js: Mapped[bool] = mapped_column(Boolean, default=False)
+    
+    # Scheduling
+    schedule_start_hour: Mapped[Optional[int]] = mapped_column(Integer)
+    schedule_end_hour: Mapped[Optional[int]] = mapped_column(Integer)
+    schedule_timezone: Mapped[str] = mapped_column(String(32), default='UTC')
+    
+    # Filters
+    block_adblock: Mapped[bool] = mapped_column(Boolean, default=False)
+    allowed_countries: Mapped[Optional[str]] = mapped_column(String(50))
+    
+    # Parity
+    public_masked_url: Mapped[Optional[str]] = mapped_column(String(512))
+    
+    # Email Gate
+    require_email: Mapped[bool] = mapped_column(Boolean, default=False)
+    email_policy: Mapped[str] = mapped_column(String(20), default='all')
+    
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+    
+    # Custom HTML
+    custom_html: Mapped[Optional[str]] = mapped_column(Text)
+    
+    # Relationships
+    visits: Mapped[List["Visit"]] = relationship(back_populates="link", lazy=True)
+
+class Visit(DatabaseModel):
+    id: Mapped[int] = mapped_column(primary_key=True)
+    link_id: Mapped[int] = mapped_column(ForeignKey('link.id'), nullable=False)
+    
+    timestamp: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+    ip_address: Mapped[Optional[str]] = mapped_column(String(45))
+    user_agent: Mapped[Optional[str]] = mapped_column(String(500))
+    referrer: Mapped[Optional[str]] = mapped_column(String(500))
+    is_suspicious: Mapped[bool] = mapped_column(Boolean, default=False)
+    
+    # Environment
+    os_family: Mapped[Optional[str]] = mapped_column(String(64))
+    device_type: Mapped[Optional[str]] = mapped_column(String(64))
+    
+    # Geo / Network
+    isp: Mapped[Optional[str]] = mapped_column(String(128))
+    org: Mapped[Optional[str]] = mapped_column(String(128))
+    hostname: Mapped[Optional[str]] = mapped_column(String(256))
+    city: Mapped[Optional[str]] = mapped_column(String(64))
+    country: Mapped[Optional[str]] = mapped_column(String(64))
+    lat: Mapped[Optional[float]] = mapped_column(Float)
+    lon: Mapped[Optional[float]] = mapped_column(Float)
+    
+    # Fingerprinting
+    screen_res: Mapped[Optional[str]] = mapped_column(String(32))
+    timezone: Mapped[Optional[str]] = mapped_column(String(64))
+    browser_bot: Mapped[bool] = mapped_column(Boolean, default=False)
+    browser_language: Mapped[Optional[str]] = mapped_column(String(10))
+    adblock: Mapped[bool] = mapped_column(Boolean, default=False)
+    
+    ai_summary: Mapped[Optional[str]] = mapped_column(String(512))
+    canvas_hash: Mapped[Optional[str]] = mapped_column(String(64))
+    webgl_renderer: Mapped[Optional[str]] = mapped_column(String(256))
+    email: Mapped[Optional[str]] = mapped_column(String(256))
+    
+    # Pro Fingerprinting
+    battery_level: Mapped[Optional[str]] = mapped_column(String(20))
+    cpu_cores: Mapped[Optional[int]] = mapped_column(Integer)
+    ram_gb: Mapped[Optional[float]] = mapped_column(Float)
+    etag: Mapped[Optional[str]] = mapped_column(String(64))
+    fpjs_confidence: Mapped[Optional[float]] = mapped_column(Float)
+
+    # Session Detector
+    detected_sessions: Mapped[Optional[str]] = mapped_column(Text)
+    
+    link: Mapped["Link"] = relationship(back_populates="visits")
+
+class User(UserMixin, DatabaseModel):
+    id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(200), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+    
+    # 2FA
+    totp_secret: Mapped[Optional[str]] = mapped_column(String(32))
+    totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    backup_codes: Mapped[Optional[str]] = mapped_column(Text)
+    passkey_credentials: Mapped[Optional[str]] = mapped_column(Text)
+
+    @property
+    def passkeys(self) -> List[Dict]:
+        if not self.passkey_credentials: return []
+        try: return json.loads(self.passkey_credentials)
+        except: return []
+
+    @passkeys.setter
+    def passkeys(self, value: List[Dict]):
+        self.passkey_credentials = json.dumps(value)
