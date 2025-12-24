@@ -28,13 +28,13 @@
                     class="fa-solid fa-check-circle"></i> Protection Active</div>
             <div style="font-size: 0.9rem;">Your account is protected. Codes are required at login.</div>
         </div>
-        <form action="{{ url_for('dashboard.dashboard_users.disable_2fa') }}" method="POST">
+        <form action="{{ url_for('dashboard.dashboard_security.disable_2fa') }}" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="btn btn-ghost w-full"
                 style="color: var(--accent-danger); border-color: var(--accent-danger);">Disable 2FA</button>
         </form>
         {% else %}
-        <a href="{{ url_for('dashboard.dashboard_users.setup_2fa') }}" class="btn btn-primary w-full">
+        <a href="{{ url_for('dashboard.dashboard_security.setup_2fa') }}" class="btn btn-primary w-full">
             <i class="fa-solid fa-qrcode"></i> Setup TOTP
         </a>
         {% endif %}
@@ -64,7 +64,7 @@
                 <div style="display: flex; align-items: center; gap: 0.5rem;">
                     <i class="fa-solid fa-mobile-screen"></i> {{ pk.name }}
                 </div>
-                <form action="{{ url_for('dashboard.dashboard_users.delete_passkey', id=pk.id) }}" method="POST"
+                <form action="{{ url_for('dashboard.dashboard_security.delete_passkey', id=pk.id) }}" method="POST"
                     style="margin: 0;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button class="btn btn-ghost btn-sm" style="padding: 0.2rem 0.5rem; color: var(--accent-danger);"><i
@@ -95,7 +95,7 @@
         <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
             Generate printable backup codes in case you lose access to your 2FA device.
         </p>
-        <a href="{{ url_for('dashboard.dashboard_users.backup_codes') }}" class="btn btn-ghost w-full">
+        <a href="{{ url_for('dashboard.dashboard_security.show_backup_codes') }}" class="btn btn-ghost w-full">
             <i class="fa-solid fa-file-shield"></i> View/Generate Codes
         </a>
     </div>
@@ -105,7 +105,7 @@
         <div class="card-header">
             <span class="card-title"><i class="fa-solid fa-key"></i> Change Password</span>
         </div>
-        <form action="{{ url_for('dashboard.dashboard_users.change_password') }}" method="POST">
+        <form action="{{ url_for('dashboard.dashboard_security.change_password') }}" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="mb-4">
                 <input type="password" name="current_password" placeholder="Current Password" required
