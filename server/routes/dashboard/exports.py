@@ -1,4 +1,3 @@
-```python
 from flask import Blueprint, send_file, make_response, request, jsonify, render_template
 from flask_login import login_required
 import json
