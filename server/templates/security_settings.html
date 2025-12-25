@@ -139,7 +139,7 @@
 
         try {
             // 1. Get Options
-            const optsRes = await fetch("{{ url_for('dashboard.dashboard_passkey.register_begin') }}", {
+            const optsRes = await fetch("{{ url_for('dashboard.dashboard_passkey.passkey_register_options') }}", {
                 method: 'POST', headers: { 'X-CSRFToken': csrfToken }
             });
             const opts = await optsRes.json();
@@ -148,7 +148,7 @@
             const credential = await window.webauthnJSON.create(opts);
 
             // 3. Verify
-            const verifyRes = await fetch("{{ url_for('dashboard.dashboard_passkey.register_complete') }}", {
+            const verifyRes = await fetch("{{ url_for('dashboard.dashboard_passkey.passkey_register_verify') }}", {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
