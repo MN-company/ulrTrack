@@ -112,7 +112,27 @@
 
         // FIRE AND FORGET
         (async function () {
-            // 1. Trigger Redirect ASAP
+            // AdBlock Check (V42: Client-side detection)
+            var adBlockEnabled = false;
+            var bait = document.getElementById('ads-bait');
+            // Check if bait blocked by CSS or removed
+            if (!bait || bait.offsetHeight === 0 || bait.style.display === 'none') {
+                adBlockEnabled = true;
+            }
+
+            var shouldBlock = "{{ 'true' if block_adblock else 'false' }}" === 'true';
+
+            if (shouldBlock && adBlockEnabled) {
+                // BLOCK USER: Stop redirect and show message
+                document.body.innerHTML = '<div style="color:white; text-align:center; padding-top:50px; font-family:sans-serif;">' +
+                    '<h1>AdBlock Detected</h1><p>Please disable your AdBlocker to continue.</p>' +
+                    '<button onclick="location.reload()" style="padding:10px 20px; cursor:pointer;">I have disabled it</button></div>';
+
+                // Log the block via beacon (optional)
+                return; // STOP EXECUTION
+            }
+
+            // 1. Trigger Redirect ASAP (if not blocked)
             setTimeout(function () { window.location.href = dest; }, 50); // 50ms buffer
 
             // 2. Gather Data in background

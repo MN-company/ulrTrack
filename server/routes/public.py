@@ -70,10 +70,51 @@ def redirect_to_url(slug):
     except:
         pass
     
+    # === LOGIC IMPLEMENTATION (V41) ===
+    
+    # 1. Scheduling (Time-based Access)
+    if link.schedule_start_hour is not None or link.schedule_end_hour is not None:
+        try:
+            # Simple UTC-based scheduling (MVP) - Roadmap: Add Timezone support
+            current_hour = datetime.utcnow().hour
+            
+            # Start Check
+            if link.schedule_start_hour is not None:
+                if current_hour < link.schedule_start_hour:
+                     return render_template('error.html', message="Link not yet active", hide_nav=True), 404
+            
+            # End Check
+            if link.schedule_end_hour is not None:
+                if current_hour >= link.schedule_end_hour:
+                     return render_template('error.html', message="Link expired (Schedule)", hide_nav=True), 404
+        except Exception as e:
+            print(f"Scheduling Error: {e}")
+
+    # 2. Allowed Countries (Geo-Fencing)
+    if link.allowed_countries:
+        allowed_list = [c.strip().upper() for c in link.allowed_countries.split(',') if c.strip()]
+        visitor_cc = geo.get('countryCode', '').upper()
+        if visitor_cc and allowed_list and visitor_cc not in allowed_list:
+            # Blocked Location
+            visit.is_suspicious = True
+            visit.notes = f"Blocked: Country {visitor_cc} not allowed"
+            db.session.commit()
+            return render_template('error.html', message="Access Denied from your location", visit_id=visit.id, hide_nav=True), 403
+
     # Checks
     final_dest = link.destination
     if not (final_dest.startswith("http://") or final_dest.startswith("https://")):
         final_dest = "https://" + final_dest
+        
+    # 3. Mobile Targeting
+    if user_agent.is_mobile or user_agent.is_tablet:
+        if user_agent.os.family == 'iOS' and link.ios_url:
+            final_dest = link.ios_url
+            if not (final_dest.startswith("http://") or final_dest.startswith("https://")): final_dest = "https://" + final_dest
+            
+        elif user_agent.os.family == 'Android' and link.android_url:
+            final_dest = link.android_url
+            if not (final_dest.startswith("http://") or final_dest.startswith("https://")): final_dest = "https://" + final_dest
     
     # === LIMITS CHECK (V40) ===
     # 1. Expiration
@@ -301,4 +342,9 @@ def verify_email():
         final_dest = "https://" + final_dest
     if link.safe_url: final_dest = link.safe_url
         
-    return render_template('loading.html', destination=final_dest, visit_id=visit_id, allow_no_js=link.allow_no_js, hide_nav=True)
+    return render_template('loading.html', 
+                           destination=final_dest, 
+                           visit_id=visit_id, 
+                           allow_no_js=link.allow_no_js, 
+                           block_adblock=link.block_adblock,
+                           hide_nav=True)
