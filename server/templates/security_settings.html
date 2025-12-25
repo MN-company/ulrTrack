@@ -64,8 +64,8 @@
                 <div style="display: flex; align-items: center; gap: 0.5rem;">
                     <i class="fa-solid fa-mobile-screen"></i> {{ pk.name }}
                 </div>
-                <form action="{{ url_for('dashboard.dashboard_security.delete_passkey', id=pk.id) }}" method="POST"
-                    style="margin: 0;">
+                <form action="{{ url_for('dashboard.dashboard_passkey.passkey_delete', credential_id=pk.id) }}"
+                    method="POST" style="margin: 0;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button class="btn btn-ghost btn-sm" style="padding: 0.2rem 0.5rem; color: var(--accent-danger);"><i
                             class="fa-solid fa-trash"></i></button>
