@@ -179,3 +179,40 @@ def disable_2fa():
     
     flash('2FA disabled.', 'success')
     return redirect(url_for('dashboard.dashboard_security.security_settings'))
+
+@bp.route('/security/password', methods=['POST'])
+@login_required
+def change_password():
+    """Change user password."""
+    user = User.query.get(current_user.id)
+    
+    current_password = request.form.get('current_password')
+    new_password = request.form.get('new_password')
+    confirm_password = request.form.get('confirm_password')
+    
+    if not current_password or not new_password or not confirm_password:
+        flash('All password fields are required.', 'error')
+        return redirect(url_for('dashboard.dashboard_security.security_settings'))
+    
+    # Verify current
+    from werkzeug.security import check_password_hash, generate_password_hash
+    if not check_password_hash(user.password_hash, current_password):
+        flash('Current password incorrect.', 'error')
+        return redirect(url_for('dashboard.dashboard_security.security_settings'))
+    
+    # Verify match
+    if new_password != confirm_password:
+        flash('New passwords do not match.', 'error')
+        return redirect(url_for('dashboard.dashboard_security.security_settings'))
+    
+    # Verify strength (basic)
+    if len(new_password) < 8:
+        flash('Password must be at least 8 characters.', 'error')
+        return redirect(url_for('dashboard.dashboard_security.security_settings'))
+        
+    # Update
+    user.password_hash = generate_password_hash(new_password)
+    db.session.commit()
+    
+    flash('Password updated successfully.', 'success')
+    return redirect(url_for('dashboard.dashboard_security.security_settings'))

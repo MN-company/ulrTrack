@@ -76,8 +76,7 @@ def passkey_register_options():
 @login_required
 def passkey_register_verify():
     """Verify passkey registration response."""
-def register_verify_passkey():
-    """Step 2: Verify WebAuthn attestation."""
+    # Step 2: Verify WebAuthn attestation.
     data = request.get_json()
     
     try:
