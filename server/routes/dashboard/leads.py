@@ -158,10 +158,11 @@ def generate_dorks(lead_id):
         
     return redirect(url_for('dashboard.dashboard_leads.lead_profile', lead_id=lead_id))
 
-@bp.route('/analyze_email', methods=['POST'])
+@bp.route('/analyze_email', methods=['GET', 'POST'])
 @login_required
 def analyze_email():
-    email = request.form.get('email')
+    """V31: Manual OSINT tool."""
+    email = request.form.get('email') or request.args.get('email')
     if not email: 
         flash('No email provided.', 'error')
         return redirect('/dashboard/contacts')
