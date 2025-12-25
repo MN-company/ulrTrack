@@ -101,6 +101,10 @@
                 </td>
                 <td>
                     <div>{{ v.os_family or '' }} / {{ v.device_type or '' }}</div>
+                    {% if v.screen_res %}
+                    <div style="font-size: 0.75rem; color: var(--text-muted);"><i class="fa-solid fa-display"></i> {{
+                        v.screen_res }}</div>
+                    {% endif %}
                     {% if v.ai_summary %}
                     <div style="font-size: 0.75rem; color: var(--accent);">{{ v.ai_summary }}</div>
                     {% endif %}

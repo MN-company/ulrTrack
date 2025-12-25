@@ -166,7 +166,7 @@ def edit_link(slug):
         flash('Link updated', 'success')
         return redirect(url_for('dashboard.dashboard_links.dashboard_home'))
     
-    return render_template('edit_link.html', link=link, server_url=Config.SERVER_URL)
+    return render_template('edit.html', link=link, server_url=Config.SERVER_URL)
 
 @bp.route('/qr/<slug>')
 @login_required

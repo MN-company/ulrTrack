@@ -90,7 +90,6 @@ def lead_profile(lead_id):
     graph_data = LeadService.build_identity_graph(lead)
 
     # OSINT Enrichment (V31)
-    from ..utils import email_permutations, get_gravatar_profile
     permutations = email_permutations(lead.email)
     gravatar_data = get_gravatar_profile(lead.email)
     

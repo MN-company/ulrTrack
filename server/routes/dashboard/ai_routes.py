@@ -35,7 +35,12 @@ def ai_console():
 @login_required
 def ai_console_send():
     """Process AI message using AIService."""
-    message = request.form.get('message', '')
+    # Support both JSON (from chat) and form data
+    if request.is_json:
+        data = request.get_json()
+        message = data.get('message', '') if data else ''
+    else:
+        message = request.form.get('message', '')
     
     if not message:
         return jsonify({'error': 'No message'}), 400
