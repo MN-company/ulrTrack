@@ -6,12 +6,12 @@
     <div class="flex-row" style="gap: 10px;">
         <form action="/dashboard/ai/analyze_all" method="POST" style="display:inline;">
 
-            {{ csrf_token() }}
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn"><i class="fas fa-robot"></i> Analyze All Pending</button>
         </form>
         <form action="/dashboard/ai/auto_tag_all" method="POST" style="display:inline;">
 
-            {{ csrf_token() }}
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn-outline"><i class="fas fa-tags"></i> Auto-Tag All</button>
         </form>
     </div>
@@ -57,7 +57,7 @@
                     </div>
                     <form action="/dashboard/ai/auto_tag" method="POST">
 
-                        {{ csrf_token() }}
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="lead_id" value="{{ item.lead.id }}">
                         <button type="submit" class="btn-sm" title="Re-run AI Tagging"><i
                                 class="fas fa-sync"></i></button>
@@ -96,7 +96,7 @@
                     <span style="font-size: 0.85rem;">{{ lead.email }}</span>
                     <form action="/dashboard/analyze_identity/{{ lead.id }}" method="POST">
 
-                        {{ csrf_token() }}
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn-sm" style="padding: 2px 8px;"><i
                                 class="fas fa-play"></i></button>
                     </form>

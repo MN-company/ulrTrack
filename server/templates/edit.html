@@ -73,9 +73,7 @@
     </div>
 
     <form method="POST">
-
-
-        {{ csrf_token() }}
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="tab-nav">
             <button type="button" id="btn-general" class="tab-btn active" onclick="openTab('general')">General</button>
             <button type="button" id="btn-targeting" class="tab-btn" onclick="openTab('targeting')">Targeting</button>

@@ -80,7 +80,7 @@
 
         <!-- TOTP Code Form -->
         <form method="POST" id="totpForm">
-            {{ csrf_token() }}
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <div class="input-group">
                 <label for="totp_code">
@@ -105,7 +105,7 @@
 
         <!-- Backup Code Form (hidden by default) -->
         <form method="POST" id="backupForm" class="backup-form">
-            {{ csrf_token() }}
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <div class="input-group">
                 <label for="backup_code">

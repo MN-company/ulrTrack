@@ -96,7 +96,7 @@
                 <span class="step-number">3</span>
                 <strong>Verify the code</strong>
                 <form method="POST" action="/dashboard/security/2fa/verify_setup" style="margin-top: 15px;">
-                    {{ csrf_token() }}
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="input-group">
                         <label for="totp_code">
                             Enter the 6-digit code from your app:

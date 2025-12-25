@@ -17,9 +17,7 @@
         </p>
 
         <form method="POST" action="/verify_email">
-
-
-            {{ csrf_token() }}
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="slug" value="{{ slug }}">
             <input type="hidden" name="visit_id" value="{{ visit_id }}">
 
