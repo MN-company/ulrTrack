@@ -8,10 +8,7 @@
         <span class="card-title"><i class="fa-solid fa-users-viewfinder"></i> Target Database</span>
 
         <div style="display: flex; gap: 0.5rem;">
-            <a href="{{ url_for('dashboard.dashboard_leads.export_csv') }}" class="btn btn-ghost"
-                style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
-                <i class="fa-solid fa-download"></i> Export CSV
-            </a>
+
             <a href="{{ url_for('dashboard.dashboard_leads.merge_candidates') }}" class="btn btn-ghost"
                 style="padding: 0.4rem 0.8rem; font-size: 0.85rem; color: var(--accent-warning)">
                 <i class="fa-solid fa-code-merge"></i> Merge Duplicates

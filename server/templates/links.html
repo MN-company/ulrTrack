@@ -28,7 +28,7 @@
                     <div style="display: flex; gap: 0.5rem; align-items: center;">
                         <span class="text-accent"
                             style="font-weight: 600; font-family: 'JetBrains Mono', monospace;">/{{ link.slug }}</span>
-                        <a href="{{ url_for('public.redirect_link', slug=link.slug) }}" target="_blank"
+                        <a href="{{ url_for('public.redirect_to_url', slug=link.slug) }}" target="_blank"
                             style="color: var(--text-muted); font-size: 0.8rem;">
                             <i class="fa-solid fa-arrow-up-right-from-square"></i>
                         </a>
@@ -65,7 +65,7 @@
                             style="padding: 0.4rem;">
                             <i class="fa-solid fa-chart-pie"></i> Intel
                         </a>
-                        <a href="{{ url_for('dashboard.dashboard_links.edit_link', link_id=link.id) }}"
+                        <a href="{{ url_for('dashboard.dashboard_links.edit_link', slug=link.slug) }}"
                             class="btn btn-ghost" style="padding: 0.4rem;">
                             <i class="fa-solid fa-sliders"></i> Edit
                         </a>
