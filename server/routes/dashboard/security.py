@@ -29,7 +29,7 @@ def security_settings():
     if user.backup_codes:
         try:
             backup_count = len(json.loads(user.backup_codes))
-        except:
+        except Exception:
             pass
     
     # Count passkeys
@@ -37,7 +37,7 @@ def security_settings():
     if user.passkey_credentials:
         try:
             passkey_count = len(json.loads(user.passkey_credentials))
-        except:
+        except Exception:
             pass
     
     return render_template('security_settings.html',

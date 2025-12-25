@@ -173,7 +173,7 @@ def analyze_email():
         lead = Lead.query.filter_by(email=email).first()
         if not lead:
             lead = LeadService.create_lead(email)
-    except:
+    except Exception:
         lead = Lead.query.filter_by(email=email).first()
     
     lead.scan_status = 'pending'

@@ -120,8 +120,8 @@ Timestamp: {visit.timestamp}
                 genai_old.configure(api_key=api_key)
                 cls.genai_module = genai_old
                 cls.mode = 'old_sdk'
-            except:
-                print("AI Service: CRITICAL - No GenAI libs.")
+            except Exception as e:
+                print(f"AI Service: CRITICAL - No GenAI libs. Error: {e}")
 
     @classmethod
     def generate(cls, prompt: str, model: str = None) -> str:

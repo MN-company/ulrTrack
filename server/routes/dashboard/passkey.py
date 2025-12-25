@@ -145,7 +145,7 @@ def passkey_list():
     if user.passkey_credentials:
         try:
             passkeys = json.loads(user.passkey_credentials)
-        except:
+        except Exception:
             pass
     
     return jsonify(passkeys)
@@ -165,5 +165,5 @@ def passkey_delete(credential_id):
         
         flash('Passkey deleted successfully', 'success')
         return jsonify({'success': True})
-    except:
-        return jsonify({'success': False, 'error': 'Failed to delete'}), 500
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Failed to delete: {str(e)}'}), 500
