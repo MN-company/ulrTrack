@@ -33,6 +33,11 @@
                             <i class="fa-solid fa-arrow-up-right-from-square"></i>
                         </a>
                     </div>
+                    {% if link.public_masked_url %}
+                    <div style="font-size: 0.75rem; color: var(--accent-success); margin-top: 2px;">
+                        <i class="fa-solid fa-mask"></i> {{ link.public_masked_url }}
+                    </div>
+                    {% endif %}
                     <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
                         &rarr; {{ link.destination[:40] }}...
                     </div>

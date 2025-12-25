@@ -77,6 +77,11 @@
 
                 <div style="flex: 1"></div>
 
+                <a href="{{ url_for('dashboard.dashboard_links.settings') }}"
+                    class="nav-item {% if 'settings' in request.endpoint and 'security' not in request.endpoint %}active{% endif %}">
+                    <i class="fa-solid fa-cog"></i>
+                    Settings
+                </a>
                 <a href="{{ url_for('dashboard.dashboard_security.security_settings') }}"
                     class="nav-item {% if 'security' in request.endpoint %}active{% endif %}">
                     <i class="fa-solid fa-shield-halved"></i>

@@ -58,10 +58,10 @@ def create_link():
     new_link = Link(
         destination=dest, 
         slug=slug, 
-        block_bots=request.form.get('block_bots') == 'true', 
-        block_vpn=request.form.get('block_vpn') == 'true',
-        enable_captcha=request.form.get('enable_captcha') == 'true',
-        require_email=request.form.get('require_email') == 'true',
+        block_bots=request.form.get('block_bots') in ['true', 'on', '1'], 
+        block_vpn=request.form.get('block_vpn') in ['true', 'on', '1'],
+        enable_captcha=request.form.get('enable_captcha') in ['true', 'on', '1'],
+        require_email=request.form.get('require_email') in ['true', 'on', '1'],
         email_policy=request.form.get('email_policy', 'all')
     )
     
