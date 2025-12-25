@@ -75,11 +75,30 @@ def redirect_to_url(slug):
     if not (final_dest.startswith("http://") or final_dest.startswith("https://")):
         final_dest = "https://" + final_dest
     
+    # === LIMITS CHECK (V40) ===
+    # 1. Expiration
+    if link.expiration_minutes and link.expiration_minutes > 0:
+        elapsed = (datetime.utcnow() - link.created_at).total_seconds() / 60
+        if elapsed > link.expiration_minutes:
+             return render_template('error.html', message="Link Expired", hide_nav=True), 404
+
+    # 2. Max Clicks
+    if link.max_clicks and link.max_clicks > 0:
+        # Count visits (excluding this current one ideally, but since we already committed it, we check count including it or use <=)
+        # We already committed the visit above at line 64. So count will be at least 1.
+        # If max_clicks is 1, and we just added 1, count is 1. If we visit again, count is 2.
+        # So logic: check count. If count > max_clicks, Block.
+        visit_count = Visit.query.filter_by(link_id=link.id).count()
+        if visit_count > link.max_clicks:
+             return render_template('error.html', message="Link Limit Reached", hide_nav=True), 404
+             
     # === SECURITY CHECKS (Correct Order) ===
-    # Define cloud providers for VPN/Bot detection
+    # Define cloud providers for VPN/Bot detection - EXPANDED LIST
     cloud_providers = [
         'google', 'amazon', 'microsoft', 'digitalocean', 'oracle', 'aliyun', 'hetzner',
-        'ovh', 'linode', 'vultr', 'lease', 'dedibox', 'choopa', 'm247', 'fly.io'
+        'ovh', 'linode', 'vultr', 'lease', 'dedibox', 'choopa', 'm247', 'fly.io',
+        'datacenter', 'hosting', 'server', 'vpn', 'proxy', 'tor', 'exit', 'node',
+        'expressvpn', 'nordvpn', 'cyberghost', 'surfshark', 'cloudflare', 'fastly', 'akamai'
     ]
     
     # 1. VPN/Bot Detection
@@ -87,13 +106,19 @@ def redirect_to_url(slug):
     if geo.get('org'):
         org_lower = geo.get('org').lower()
         if any(p in org_lower for p in cloud_providers):
-            is_bot = True
-    
-    is_vpn_or_cloud = geo.get('hosting') == True or (geo.get('org') and any(p in geo.get('org').lower() for p in cloud_providers))
+            is_bot = True # Treat cloud/vpn as potential bot
+            
+    is_vpn_or_cloud = geo.get('hosting') == True
+    if geo.get('org'):
+        org_lower = geo.get('org').lower()
+        # Check against provider list explicitly for VPN flag
+        if any(p in org_lower for p in cloud_providers):
+            is_vpn_or_cloud = True
     
     # Check VPN block
     if link.block_vpn and is_vpn_or_cloud:
         visit.is_suspicious = True
+        visit.notes = "Blocked: VPN/Cloud Detected"
         db.session.commit()
         if link.safe_url:
             final_dest = link.safe_url
@@ -103,6 +128,7 @@ def redirect_to_url(slug):
     # Check Bot block
     if link.block_bots and is_bot:
         visit.is_suspicious = True
+        visit.notes = "Blocked: Bot Detected"
         db.session.commit()
         if link.safe_url:
             final_dest = link.safe_url
