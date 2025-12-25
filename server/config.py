@@ -33,6 +33,8 @@ class Config:
     SESSION_COOKIE_HTTPONLY: bool = True
     SESSION_COOKIE_SAMESITE: str = 'Lax'
     PERMANENT_SESSION_LIFETIME: int = 86400 # 24 hours in seconds
+    WTF_CSRF_TIME_LIMIT: int = 86400 # Match session lifetime
+    WTF_CSRF_SSL_STRICT: bool = False # Allow HTTP for dev/internal proxies
     
     # API Keys & Integrations
     API_KEY: str = os.getenv('API_KEY', 'changeme')
