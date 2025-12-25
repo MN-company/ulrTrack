@@ -5,12 +5,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ULRTrack | Enterprise Intelligence</title>
-    <!-- Fonts: Inter for UI, JetBrains for Code -->
+
     <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;700&family=JetBrains+Mono:wght@400&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 
     <!-- Global CSRF Protection -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -26,7 +28,6 @@
             const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
             if (csrfToken && !config.headers['X-CSRFToken']) {
                 config.headers['X-CSRFToken'] = csrfToken;
-                // Also add X-Requested-With for Flask security headers checks
                 config.headers['X-Requested-With'] = 'XMLHttpRequest';
             }
 
@@ -34,258 +35,97 @@
         };
     </script>
 
-    <style>
-        :root {
-            /* High Contrast Cyberpunk Palette */
-            --bg-color: #000000;
-            --surface-color: #0a0a0a;
-            --border-color: #333333;
+    {% block head %}{% endblock %}
+</head>
 
-            --accent: #00ff41;
-            /* Hacker Green */
-            --accent-dim: rgba(0, 255, 65, 0.1);
-            --accent-hover: #00cc33;
+<body>
 
-            --text-main: #ffffff;
-            --text-sec: #bbbbbb;
-            --text-muted: #666666;
+    <div class="app-shell">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="brand">
+                <i class="fa-solid fa-eye"></i>
+                <span>OVERWATCH</span>
+            </div>
 
-            --danger: #cf222e;
-            --warning: #d29922;
-            --success: #2ea043;
+            <nav class="nav-menu">
+                <a href="{{ url_for('dashboard.dashboard_links.dashboard_home') }}"
+                    class="nav-item {% if request.endpoint == 'dashboard.dashboard_links.dashboard_home' %}active{% endif %}">
+                    <i class="fa-solid fa-gauge-high"></i>
+                    Command Center
+                </a>
+                <a href="{{ url_for('dashboard.dashboard_leads.contacts') }}"
+                    class="nav-item {% if 'leads' in request.endpoint %}active{% endif %}">
+                    <i class="fa-solid fa-users-viewfinder"></i>
+                    Targets (Leads)
+                </a>
+                <a href="{{ url_for('dashboard.dashboard_links.links') }}"
+                    class="nav-item {% if 'links' in request.endpoint and 'home' not in request.endpoint %}active{% endif %}">
+                    <i class="fa-solid fa-link"></i>
+                    Campaigns (Links)
+                </a>
+                <a href="{{ url_for('dashboard.dashboard_ai.ai_console') }}"
+                    class="nav-item {% if 'ai' in request.endpoint %}active{% endif %}">
+                    <i class="fa-solid fa-brain"></i>
+                    AI Analyst
+                </a>
+                <a href="{{ url_for('dashboard.dashboard_stats.global_timeline') }}"
+                    class="nav-item {% if 'stats' in request.endpoint %}active{% endif %}">
+                    <i class="fa-solid fa-chart-line"></i>
+                    Global Intel
+                </a>
 
-            --font-ui: 'Inter', system-ui, sans-serif;
-            --font-mono: 'JetBrains Mono', monospace;
-        }
+                <div style="flex: 1"></div>
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            outline: none;
-        }
+                <a href="{{ url_for('dashboard.dashboard_security.security_settings') }}"
+                    class="nav-item {% if 'security' in request.endpoint %}active{% endif %}">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    Security
+                </a>
+                <a href="{{ url_for('auth.logout') }}" class="nav-item" style="color: var(--accent-danger)">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                    Logout
+                </a>
+            </nav>
+        </aside>
 
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            font-family: var(--font-ui);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow-x: hidden;
-            /* Simple clean background */
-            background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-            background-size: 50px 50px;
-        }
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+            <!-- TOP BAR -->
+            <header class="top-bar">
+                <div class="breadcrumbs">
+                    System / <span>{% block breadcrumb %}Dashboard{% endblock %}</span>
+                </div>
 
-        /* High Contrast Card */
-        .card {
-            background: var(--surface-color);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            /* Sharper corners */
-            padding: 24px;
-            margin-bottom: 20px;
-        }
+                <div class="top-actions">
+                    <input type="text" class="search-bar" placeholder="Intelligence Search (Cmd+K)...">
+                    <div
+                        style="width: 32px; height: 32px; background: var(--accent-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white;">
+                        {{ current_user.username[0].upper() }}
+                    </div>
+                </div>
+            </header>
 
-        /* Navbar */
-        nav {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 30px;
-            background: #000;
-            border-bottom: 1px solid var(--border-color);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
+            <!-- SCROLLABLE PAGE AREA -->
+            <div class="page-scroll">
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                {% for category, message in messages %}
+                <div class="badge badge-{{ 'danger' if category == 'error' else 'success' if category == 'success' else 'warning' }} mb-4"
+                    style="display: block; width: fit-content;">
+                    {{ message }}
+                </div>
+                {% endfor %}
+                {% endif %}
+                {% endwith %}
 
-        .logo {
-            font-weight: 700;
-            font-size: 1.2rem;
-            color: #fff;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
 
-        .logo span {
-            color: var(--accent);
-        }
+    {% block scripts %}{% endblock %}
+</body>
 
-        .nav-links {
-            display: flex;
-            gap: 20px;
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-
-        .nav-links a {
-            color: var(--text-sec);
-            padding: 5px 10px;
-            border-radius: 4px;
-            transition: 0.1s;
-        }
-
-        .nav-links a:hover,
-        .nav-links a.active {
-            color: #000;
-            background: var(--accent);
-        }
-
-        /* Solid Buttons */
-        .btn {
-            background: var(--accent);
-            color: #000;
-            font-weight: 700;
-            padding: 10px 20px;
-            border-radius: 4px;
-            border: none;
-            cursor: pointer;
-            text-transform: uppercase;
-            font-size: 0.85rem;
-            letter-spacing: 0.5px;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.1s;
-        }
-
-        .btn:hover {
-            background: var(--accent-hover);
-            transform: none;
-            box-shadow: none;
-        }
-
-        .btn-outline {
-            background: transparent;
-            color: var(--accent);
-            border: 1px solid var(--accent);
-            padding: 9px 19px;
-            border-radius: 4px;
-            font-weight: 600;
-            cursor: pointer;
-            text-transform: uppercase;
-            font-size: 0.85rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-outline:hover {
-            background: var(--accent-dim);
-        }
-
-        .btn-sm {
-            padding: 5px 12px;
-            font-size: 0.75rem;
-        }
-
-        .btn-danger {
-            background: #3a1010;
-            color: #ff6a6a;
-            border: 1px solid #8e1c1c;
-        }
-
-        .btn-danger:hover {
-            background: #5c1818;
-        }
-
-        /* Forms High Contrast */
-        input,
-        select,
-        textarea {
-            width: 100%;
-            background: #000;
-            border: 1px solid var(--border-color);
-            padding: 10px;
-            border-radius: 4px;
-            color: #fff;
-            font-family: var(--font-mono);
-            font-size: 0.9rem;
-        }
-
-        input:focus,
-        select:focus,
-        textarea:focus {
-            border-color: var(--accent);
-            outline: none;
-        }
-
-
-
-        /* Container & Cards */
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 40px 20px;
-            width: 100%;
-            flex: 1;
-        }
-
-        .card {
-            background: var(--card-bg);
-
-            </head><body><div class="app-shell">< !-- SIDEBAR --><aside class="sidebar"><div class="brand"><i class="fa-solid fa-eye"></i><span>OVERWATCH</span></div><nav class="nav-menu"><a href="{{ url_for('dashboard.dashboard_links.dashboard_home') }}" class="nav-item {% if request.endpoint == 'dashboard.dashboard_links.dashboard_home' %}active{% endif %}"><i class="fa-solid fa-gauge-high"></i>Command Center </a><a href="{{ url_for('dashboard.dashboard_leads.contacts') }}" class="nav-item {% if 'leads' in request.endpoint %}active{% endif %}"><i class="fa-solid fa-users-viewfinder"></i>Targets (Leads) </a><a href="{{ url_for('dashboard.dashboard_links.links') }}" class="nav-item {% if 'links' in request.endpoint and 'home' not in request.endpoint %}active{% endif %}"><i class="fa-solid fa-link"></i>Campaigns (Links) </a><a href="{{ url_for('dashboard.dashboard_ai.ai_console') }}" class="nav-item {% if 'ai' in request.endpoint %}active{% endif %}"><i class="fa-solid fa-brain"></i>AI Analyst </a><a href="{{ url_for('dashboard.dashboard_stats.global_timeline') }}" class="nav-item {% if 'stats' in request.endpoint %}active{% endif %}"><i class="fa-solid fa-chart-line"></i>Global Intel </a><div <a href="{{ url_for('dashboard.dashboard_security.security_settings') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700" role="menuitem"><i class="fa-solid fa-user-shield mr-2"></i>Security </a><a href="{{ url_for('auth.logout') }}" class="nav-item" style="color: var(--accent-danger)"><i class="fa-solid fa-arrow-right-from-bracket"></i>Logout </a></nav></aside>< !-- MAIN CONTENT --><main class="main-content">< !-- TOP BAR --><header class="top-bar"><div class="breadcrumbs">System / <span> {
-                % block breadcrumb %
-            }
-
-            Dashboard {
-                % endblock %
-            }
-
-            </span></div><div class="top-actions"><input type="text" class="search-bar" placeholder="Intelligence Search (Cmd+K)..."><div style="width: 32px; height: 32px; background: var(--accent-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;"> {
-                    {
-                    current_user.username[0].upper()
-                }
-            }
-
-            </div></div></header>< !-- SCROLLABLE PAGE AREA --><div class="page-scroll">< !-- Flash Messages --> {
-                % with messages=get_flashed_messages(with_categories=true) %
-            }
-
-                {
-                % if messages %
-            }
-
-                {
-                % for category,
-                message in messages %
-            }
-
-            <div class="badge badge-{{ 'danger' if category == 'error' else 'success' if category == 'success' else 'warning' }} mb-4" style="display: block; width: fit-content;"> {
-                    {
-                    message
-                }
-            }
-
-            </div> {
-                % endfor %
-            }
-
-                {
-                % endif %
-            }
-
-                {
-                % endwith %
-            }
-
-                {
-                % block content %
-            }
-
-                {
-                % endblock %
-            }
-
-            </div></main></div> {
-                % block scripts %
-            }
-
-                {
-                % endblock %
-            }
-
-            </body></html>
+</html>
