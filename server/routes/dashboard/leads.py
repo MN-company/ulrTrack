@@ -33,6 +33,18 @@ def contacts():
     leads = Lead.query.order_by(Lead.created_at.desc()).all()
     return render_template('contacts.html', leads=leads)
 
+@bp.route('/export_contacts_csv')
+@login_required
+def export_contacts_csv():
+    """Export all leads to CSV."""
+    from ...services.lead_service import LeadService
+    csv_data = LeadService.export_csv()
+    
+    response = make_response(csv_data)
+    response.headers["Content-Disposition"] = "attachment; filename=ulrtrack_leads.csv"
+    response.headers["Content-Type"] = "text/csv"
+    return response
+
 @bp.route('/merge_candidates')
 @login_required
 def merge_candidates():
