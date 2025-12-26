@@ -72,11 +72,22 @@ def redirect_to_url(slug):
     
     # === LOGIC IMPLEMENTATION (V41) ===
     
-    # 1. Scheduling (Time-based Access)
+    # 1. Scheduling (Time-based Access) - IMPROVED V42
     if link.schedule_start_hour is not None or link.schedule_end_hour is not None:
         try:
-            # Simple UTC-based scheduling (MVP) - Roadmap: Add Timezone support
-            current_hour = datetime.utcnow().hour
+            import pytz
+            
+            # Determine Timezone
+            tz_name = link.schedule_timezone or 'UTC'
+            try:
+                target_tz = pytz.timezone(tz_name)
+            except pytz.UnknownTimeZoneError:
+                # Fallback to UTC if invalid TZ provided
+                target_tz = pytz.UTC
+            
+            # Get current time in target timezone
+            current_time = datetime.now(target_tz)
+            current_hour = current_time.hour
             
             # Start Check
             if link.schedule_start_hour is not None:
