@@ -280,3 +280,36 @@ def verify_turnstile(token: str, ip: str) -> bool:
     except Exception as e:
         print(f"Turnstile Connection Error: {e}")
         return False
+def update_env_file(updates: Dict[str, str]):
+    """Safely updates keys in the .env file."""
+    env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
+    if not os.path.exists(env_path):
+        return
+
+    with open(env_path, 'r') as f:
+        lines = f.readlines()
+
+    new_lines = []
+    updated_keys = set()
+    
+    for line in lines:
+        cleaned = line.strip()
+        # Handle comments and empty lines
+        if not cleaned or cleaned.startswith('#'):
+            new_lines.append(line)
+            continue
+            
+        key = cleaned.split('=')[0].strip()
+        if key in updates:
+            new_lines.append(f"{key}={updates[key]}\n")
+            updated_keys.add(key)
+        else:
+            new_lines.append(line)
+    
+    # Add new keys
+    for key, val in updates.items():
+        if key not in updated_keys:
+            new_lines.append(f"{key}={val}\n")
+            
+    with open(env_path, 'w') as f:
+        f.writelines(new_lines)

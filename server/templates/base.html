@@ -41,6 +41,7 @@
 <body>
 
     <div class="app-shell">
+        {% if not hide_nav %}
         <!-- SIDEBAR -->
         <aside class="sidebar">
             <div class="brand">
@@ -110,24 +111,28 @@
                     </div>
                 </div>
             </header>
-
-            <!-- SCROLLABLE PAGE AREA -->
-            <div class="page-scroll">
-                <!-- Flash Messages -->
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                {% for category, message in messages %}
-                <div class="badge badge-{{ 'danger' if category == 'error' else 'success' if category == 'success' else 'warning' }} mb-4"
-                    style="display: block; width: fit-content;">
-                    {{ message }}
-                </div>
-                {% endfor %}
+            {% else %}
+            <!-- Standalone Layout (No Sidebar) -->
+            <main class="main-content" style="margin-left: 0; width: 100%;">
                 {% endif %}
-                {% endwith %}
 
-                {% block content %}{% endblock %}
-            </div>
-        </main>
+                <!-- SCROLLABLE PAGE AREA -->
+                <div class="page-scroll">
+                    <!-- Flash Messages -->
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="badge badge-{{ 'danger' if category == 'error' else 'success' if category == 'success' else 'warning' }} mb-4"
+                        style="display: block; width: fit-content;">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                    {% endwith %}
+
+                    {% block content %}{% endblock %}
+                </div>
+            </main>
     </div>
 
     {% block scripts %}{% endblock %}

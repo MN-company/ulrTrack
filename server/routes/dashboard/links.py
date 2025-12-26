@@ -193,9 +193,57 @@ def qr_view(slug):
 @login_required
 def settings():
     """Global settings page."""
+    
+    # Path to data files
+    data_dir = os.path.join(current_app.root_path, 'data')
+    os.makedirs(data_dir, exist_ok=True)
+    disposable_path = os.path.join(data_dir, 'disposable_domains.txt')
+    
+    # Ensure file exists
+    if not os.path.exists(disposable_path):
+        with open(disposable_path, 'w') as f: f.write('')
+
     if request.method == 'POST':
-        # Save settings logic here
-        flash('Settings saved', 'success')
+        # 1. Update .env (System Settings)
+        from ...utils import update_env_file
+        
+        env_updates = {
+            'GEMINI_API_KEY': request.form.get('api_key'),
+            'SERVER_URL': request.form.get('server_url'),
+            'HOLEHE_CMD': request.form.get('holehe_cmd'),
+            'GEMINI_MODEL': request.form.get('gemini_model'),
+            'AI_SYSTEM_PROMPT': request.form.get('ai_prompt')
+        }
+        
+        # Filter None and update
+        keys_to_update = {k: v for k, v in env_updates.items() if v is not None}
+        if keys_to_update:
+            update_env_file(keys_to_update)
+            
+        # 2. Update Disposable Domains List
+        disposable_domains = request.form.get('disposable_domains', '')
+        # Clean and validate
+        clean_domains = [d.strip().lower() for d in disposable_domains.split('\n') if d.strip()]
+        try:
+            with open(disposable_path, 'w') as f:
+                f.write('\n'.join(clean_domains))
+        except Exception as e:
+            flash(f'Error saving domains: {e}', 'error')
+
+        flash('Settings saved. Restart required for system changes.', 'success')
         return redirect(url_for('dashboard.dashboard_links.settings'))
     
-    return render_template('settings.html')
+    # Load current values
+    try:
+        with open(disposable_path, 'r') as f:
+            disposable_content = f.read()
+    except:
+        disposable_content = ""
+        
+    return render_template('settings.html',
+                         api_key=Config.GEMINI_API_KEY,
+                         server_url=Config.SERVER_URL,
+                         holehe_cmd=os.getenv('HOLEHE_CMD', 'holehe'),
+                         gemini_model=os.getenv('GEMINI_MODEL', 'gemini-1.5-pro'),
+                         ai_prompt=os.getenv('AI_SYSTEM_PROMPT', ''),
+                         disposable_domains=disposable_content)
