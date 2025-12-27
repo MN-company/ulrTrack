@@ -113,7 +113,8 @@
                             <div style="font-weight: 600;">{{ v.ip_address }}</div>
                             <div style="font-size: 0.8rem;">
                                 {% if v.email %}
-                                <a href="{{ url_for('dashboard.analyze_email') }}" class="text-accent">{{ v.email }}</a>
+                                <a href="{{ url_for('dashboard.dashboard_leads.contacts') }}" class="text-accent">{{
+                                    v.email }}</a>
                                 {% else %}
                                 <span class="text-muted">{{ v.isp or 'Unknown ISP' }}</span>
                                 {% endif %}
