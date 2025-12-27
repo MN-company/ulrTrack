@@ -15,7 +15,7 @@ segno
 Pillow
 orjson
 google-genai
-holehe
+
 httpx
 bcrypt
 pyotp

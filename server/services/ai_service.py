@@ -33,7 +33,7 @@ Tags: {lead.tags or 'None'}
 Total Visits: {len(visits)}
 Countries: {', '.join(countries) or 'None'}
 Devices: {', '.join(devices) or 'None'}
-OSINT Data: {lead.holehe_data or 'None'}
+
 Custom Fields: {lead.custom_fields or 'None'}
 """
             else:
@@ -147,14 +147,7 @@ Timestamp: {visit.timestamp}
         except Exception as e:
             return f"AI Error: {str(e)}"
 
-    @staticmethod
-    def generate_dorks(email: str) -> str:
-        """Generates Google Dorks for an email."""
-        prompt = f"""Target: {email}
-Action: Generate 5 advanced Google Dorks to find exposed documents, logs, or passwords.
-Include site searches for pastebin, s3, github, trello.
-Return ONLY raw dorks, one per line."""
-        return AIService.generate(prompt)
+
 
     @staticmethod
     def generate_response(message: str) -> dict:

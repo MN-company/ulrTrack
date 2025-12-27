@@ -342,9 +342,7 @@ def verify_email():
             db.session.add(lead)
             db.session.commit()
         
-        # Async OSINT
-        from ..extensions import log_queue
-        log_queue.put({'type': 'osint', 'email': email})
+
     
     # 4. Success -> Redirect to Loading
     # Checks
