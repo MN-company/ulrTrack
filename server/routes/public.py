@@ -154,13 +154,13 @@ def redirect_to_url(slug):
     ]
     
     # 1. VPN/Bot Detection
-    is_bot = is_bot_ua(ua_string) or geo.get('hosting') == True
+    is_bot = is_bot_ua(ua_string) or geo.get('hosting') == True or geo.get('proxy') == True
     if geo.get('org'):
         org_lower = geo.get('org').lower()
         if any(p in org_lower for p in cloud_providers):
             is_bot = True # Treat cloud/vpn as potential bot
             
-    is_vpn_or_cloud = geo.get('hosting') == True
+    is_vpn_or_cloud = geo.get('hosting') == True or geo.get('proxy') == True
     if geo.get('org'):
         org_lower = geo.get('org').lower()
         # Check against provider list explicitly for VPN flag
@@ -170,6 +170,7 @@ def redirect_to_url(slug):
     # Check VPN block
     if link.block_vpn and is_vpn_or_cloud:
         visit.is_suspicious = True
+        visit.is_vpn = True # Set flag immediately
         visit.notes = "Blocked: VPN/Cloud Detected"
         db.session.commit()
         if link.safe_url:

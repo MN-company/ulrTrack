@@ -156,8 +156,22 @@ Timestamp: {visit.timestamp}
         """
         AIService.initialize()
         
+        # Custom Context Parsing
         context = AIService.build_context(message)
-        system_context = """You are a cybersecurity intelligence analyst expert. 
+        
+        # General Database Stats (Always Included)
+        total_visits = Visit.query.count()
+        total_leads = Lead.query.count()
+        recent_visits = Visit.query.order_by(Visit.timestamp.desc()).limit(5).all()
+        recent_v_text = "\n".join([f"- {v.ip_address} ({v.country or '?'}) on {v.timestamp.strftime('%H:%M')}" for v in recent_visits])
+        
+        system_context = f"""You are a cybersecurity intelligence analyst expert.
+I have access to the live database:
+- Total Intercepts: {total_visits}
+- Total Leads: {total_leads}
+- Recent Activity:
+{recent_v_text}
+
 Help analyze data and identify patterns. Be concise but insightful."""
         
         full_prompt = f"{system_context}\n{context}\n\nUser Question: {message}"
