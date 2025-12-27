@@ -1,149 +1,82 @@
-# 🛡️ Stealth URL Shortener (V8)
+# 🦅 ulrTrack: Advanced Intelligence Router
 
-**The Ultimate Traffic Control System for Grey-Hat Marketing.**
+**The Open-Source "Link Router" for Advanced Analytics & Traffic Control.**
 
-Is your traffic being blocked by Facebook, Instagram, or TikTok because of "Suspicious Links"?
-**Stealth Shortener** solves this by making your links look like harmless 200 OK pages to bots, while safely delivering real users to your target.
+ulrTrack is a sophisticated URL routing platform designed for deep traffic analysis, behavioral fingerprinting, and granular access control. Unlike standard URL shorteners, ulrTrack acts as an intelligent gateway that analyzes every visitor in real-time before routing them to their destination.
 
-### 🆚 The Difference is Invisible
+![Dashboard Preview](dashboard_preview.png)
 
-| Others (Blocked) ❌ | stealth-shortener (Safe) ✅ |
-| :---: | :---: |
-| ![Others](others.png) | ![Ours](our.png) |
-| **302 Redirect** <br> Bots see the redirect immediately and scan your destination. | **200 OK + JS** <br> Bots see a blank page. Real users are redirected instantly via JavaScript. |
+## 🚀 Core Capabilities
 
-## ✨ Key Features
+### 1. 🧠 Ultra-Customizable Routing
+Define exactly who sees your content and where they go based on granular rules:
+*   **Device Targeting:** Route iOS users to App Store, Android to Play Store, and Desktop to Web.
+*   **Geo-Fencing:** Allow or Block traffic from specific countries.
+*   **VPN/Proxy Shield:** Automatically detect and filter traffic from commercial VPNs, Proxy services, and Data Centers (AWS, DigitalOcean, etc.).
+*   **Time-Based Access:** Schedule links to open/close at specific hours (e.g., "Office Hours Only").
+*   **Bot Cloaking:** Show a harmless "404" or "Safe Page" to bots/crawlers while real users get through.
 
-### 👻 Stealth & Cloaking
-- **HTTP 200 OK Redirects**: Uses a lightweight "Loading" page with JavaScript redirection.
-- **Smart Cloaking**: Redirects suspicious traffic (Bots, VPNs) to a safe "fallback" URL (e.g., Google).
-- **Bot Detection**: Double-layer detection (User-Agent + Client-Side JS).
+### 2. 🔬 Deep Behavioral Analytics
+Going far beyond simple click counts, providing a forensic level of detail:
+*   **Hardware Fingerprinting:** Detect Screen Resolution, GPU Renderer, CPU Cores, and RAM.
+*   **Network Intelligence:** Identify ISP, Organization, and Connection Type (Residential/Cellular/Corporate).
+*   **Session Graph:** Visualize connections between different visitors (e.g., "Same device, different IP").
+*   **AI Analyst (Gemini 2.0):** Ask questions like *"What is the top device used in Italy today?"* directly in the dashboard.
 
-### 🔬 Deep Technical Fingerprinting
-We collect advanced hardware data to identify unique users and bots:
-*   **Screen Resolution**: Width/Height (e.g., 1920x1080).
-*   **Color Depth**: 24-bit/32-bit.
-*   **Languge **: Detection of the language of the user to improve regional blocking.
-*   **AdBlock Status**: Detects if the user is blocking internal scripts.
-
-### 🎭 URL Masking
-- **Double Shortening**: Automatically integrates with **is.gd** to mask your domain.
-- **Why?**: Even if your domain is "darknetmarket.com", users will see a generic `is.gd/xyz` link first. This adds an extra layer of anonymity and prevents direct domain flagging.
-
-### 🌍 Traffic Filtering
-- **ISP & Geo Blocking**: Native integration with `ip-api.com` to detect and block Hosting Providers/Data Centers (AWS, DigitalOcean, Hetzner, etc.).
-- **VPN Protection**: Effectively filters out proxy/VPN traffic using ISP classification.
-- **Device Targeting**: Route iOS and Android users to specific app store URLs automatically.
-
-### 📊 Deep Analytics
-- **Client-Side Beacons**: Captures Screen Resolution, Timezone, and Browser Capabilities without slowing down the redirect.
-- **Rich Stats**: Tracks City, Country, ISP, Device Type, and Referrer.
-- **CSV Export**: Full raw data export for forensic analysis.
-
-### 🔒 Security Interstitials
-- **Password Protection**: Secure SHA-256 hashed password gates.
-- **Cloudflare Turnstile**: Integrated CAPTCHA to prevent automated bot traffic.
+### 3. 🛡️ Security Gates
+Protect your destination with interactive challenges:
+*   **Email Gate:** Require a validated email address to proceed (checks for disposable/temporary domains).
+*   **Password Protection:** Secure SHA-256 hashed access.
+*   **reCAPTCHA / Turnstile:** Invisible bot protection.
 
 ---
 
-## 🚀 Deployment Guide (PythonAnywhere)
+## 🛠️ Installation (Self-Hosted)
 
-This project is optimized for deployment on [PythonAnywhere](https://www.pythonanywhere.com/).
+### Prerequisites
+*   Python 3.10+
+*   pip / virtualenv
 
-### 1. Setup
-1.  Create a Web App (Flask -> Python 3.10+).
-2.  Open a **Bash Console** and clone your repo:
-    ```bash
-    git clone https://github.com/MN-company/ulrTrack.git
-    cd stealth-shortener
-    ```
-3.  Install dependencies:
-    ```bash
-    pip install -r server/requirements.txt
-    ```
-
-### 2. Configuration (`.env`)
-Create a `.env` file in the root directory (use `.env.example` as a template):
+### 1. Clone & Setup
 ```bash
-cp .env.example .env
-nano .env
-```
-Fill in your details:
-*   `SERVER_URL`: Your full domain (e.g., `https://myuser.pythonanywhere.com`)
-*   `API_KEY`: A secret password you generate (needed for the CLI).
+git clone https://github.com/MN-company/ulrTrack.git
+cd ulrTrack
 
-### 3. Database
-Initialize the SQLite database:
-```bash
-python3 server/init_db.py
+# Create Virtual Env
+python3 -m venv venv
+source venv/bin/activate
+
+# Install Dependencies
+pip install -r server/requirements.txt
 ```
 
-### 4. WSGI Configuration
-Go to the **Web** tab in PythonAnywhere and edit the WSGI configuration file. Replace everything with the file provided in my repo.
+### 2. Configure Environment
+Copy `.env.example` to `.env` and configure:
+```bash
+SERVER_URL=https://your-domain.com
+SECRET_KEY=your-secret-key
+GEMINI_API_KEY=your-gemini-key  # For AI Features
+```
 
-### 5. Cloudflare Turnstile (Captcha)
-To enable the "Not a Robot" check:
-1.  Go to [Cloudflare Turnstile](https://www.cloudflare.com/products/turnstile/) and add your domain (e.g., `yourname.pythonanywhere.com`).
-2.  Get the **Site Key** and **Secret Key**.
-3.  Add them to your `.env` file:
-    ```ini
-    TURNSTILE_SITE_KEY=0x4AAAAAA...
-    TURNSTILE_SECRET_KEY=0x4AAAAAA...
-    ```
-4.  Reload your Web App.
+### 3. Initialize & Run
+```bash
+# Initialize Database
+python3 -m server.init_db
+
+# Run Development Server
+./run.sh
+```
 
 ---
 
-## 📦 Local Usage (CLI)
+## 📊 Dashboard Features
 
-The Command Line Interface (CLI) allows you to manage links from your local machine.
-
-### Setup
-```bash
-./run.sh client
-```
-(On first run, it will automatically create a virtual environment and install dependencies).
-
-### Creating Links
-Follow the interactive wizard to:
-1.  Set destination.
-2.  Enable **Targeting** (iOS/Android).
-3.  Enable **Cloaking** (Safe URL for bots).
-4.  Enable **Protection** (VPN Blocking, Captcha).
-
----
-
-## 🕵️ Blackbird OSINT Integration
-
-Blackbird is used for advanced OSINT scanning of captured email addresses.
-
-> [!IMPORTANT]
-> Blackbird is **NOT** in requirements.txt because it's a GitHub repository, not a PyPI package.
-> You must install it manually using the steps below.
-
-### Manual Setup (Required)
-```bash
-# Clone the repository
-git clone https://github.com/p1ngul1n0/blackbird
-cd blackbird
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### Integration
-Once installed, ulrTrack will automatically detect and use Blackbird when you:
-1. Go to Contacts page
-2. Click "Blackbird Scan" button on a lead
-3. The system runs `blackbird/blackbird.py` with the username
-
-### Troubleshooting
-If Blackbird scans fail:
-- Verify `blackbird/` directory exists in project root
-- Check `blackbird/blackbird.py` is executable
-- Ensure all Blackbird dependencies are installed
+*   **Live Feed:** Real-time stream of every click.
+*   **Visual Graph:** Interactive node graph showing relationships between Visitors, IPs, and Devices.
+*   **Export:** Full CSV/JSON export for external analysis.
+*   **System Status:** Monitor background workers and AI latency.
 
 ---
 
 ## ⚠️ Disclaimer
-This tool is intended for educational and legitimate traffic management purposes. The authors are not responsible for misuse.
+This tool is designed for legitimate marketing analytics, traffic management, and cybersecurity research. The developers are not responsible for misuse.
