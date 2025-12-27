@@ -162,8 +162,27 @@ Timestamp: {visit.timestamp}
         # General Database Stats (Always Included)
         total_visits = Visit.query.count()
         total_leads = Lead.query.count()
-        recent_visits = Visit.query.order_by(Visit.timestamp.desc()).limit(5).all()
-        recent_v_text = "\n".join([f"- {v.ip_address} ({v.country or '?'}) on {v.timestamp.strftime('%H:%M')}" for v in recent_visits])
+        
+        # Advanced Aggregation using Python (efficient enough for small datasets)
+        all_visits = Visit.query.with_entities(Visit.country, Visit.device_type, Visit.timestamp, Visit.ip_address).all()
+        
+        # Recent Activity
+        recent_v_text = "\n".join([f"- {v.ip_address} ({v.country or '?'}) on {v.timestamp.strftime('%H:%M')}" for v in all_visits[-5:]])
+        
+        # Top Countries
+        country_counts = {}
+        for v in all_visits:
+            c = v.country or 'Unknown'
+            country_counts[c] = country_counts.get(c, 0) + 1
+        top_countries = sorted(country_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+        top_c_text = ", ".join([f"{c} ({n})" for c, n in top_countries])
+
+        # Top Devices
+        device_counts = {}
+        for v in all_visits:
+            d = v.device_type or 'Unknown'
+            device_counts[d] = device_counts.get(d, 0) + 1
+        top_devices = ", ".join([f"{d} ({n})" for d, n in sorted(device_counts.items(), key=lambda x: x[1], reverse=True)])
         
         system_context = f"""You are a cybersecurity intelligence analyst expert.
 I have access to the live database:
@@ -171,6 +190,8 @@ I have access to the live database:
 - Total Leads: {total_leads}
 - Recent Activity:
 {recent_v_text}
+- Top Locations: {top_c_text}
+- Device Mix: {top_devices}
 
 Help analyze data and identify patterns. Be concise but insightful."""
         

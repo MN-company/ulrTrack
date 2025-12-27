@@ -104,12 +104,14 @@ def get_geo_data(ip: str) -> Dict[str, Any]:
     """Fetch ISP, Geo, AND Proxy/Hosting data from ip-api.com (Cached)."""
     try:
         fields = "status,country,city,lat,lon,isp,org,as,proxy,hosting,mobile,query,countryCode"
-        resp = session.get(f"http://ip-api.com/json/{ip}?fields={fields}", timeout=1.5)
+        resp = session.get(f"http://ip-api.com/json/{ip}?fields={fields}", timeout=3.0)
         data = resp.json()
         if data.get('status') == 'success':
             return data
-    except:
-        pass
+        else:
+            print(f"VPN Check Failed for {ip}: {data}")
+    except Exception as e:
+        print(f"VPN Check Timeout/Error for {ip}: {e}")
     return {}
 
 def get_reverse_dns(ip: str) -> Optional[str]:
