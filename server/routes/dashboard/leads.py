@@ -105,32 +105,4 @@ def lead_profile(lead_id):
                           timeline_visits=graph_data['visits']
                           )
 
-@bp.route('/qr/<slug>')
-@login_required
-def qr_code_img(slug):
-    """Generate QR Code image dynamic."""
-    link = Link.query.filter_by(slug=slug).first_or_404()
-    import segno
-    import io
-    from flask import send_file
-    
-    # Get params
-    scale = int(request.args.get('scale', 10))
-    color = '#' + request.args.get('color', '000000').replace('#','')
-    bg = '#' + request.args.get('bg', 'ffffff').replace('#','')
-    
-    # Ensure server url
-    server_url = Config.SERVER_URL or request.host_url.rstrip('/')
-    dest_url = f"{server_url}/{slug}"
-    
-    qr = segno.make(dest_url, error='h')
-    out = io.BytesIO()
-    qr.save(out, kind='png', scale=scale, dark=color, light=bg)
-    out.seek(0)
-    
-    return send_file(out, mimetype='image/png')
-
-
-
-
 

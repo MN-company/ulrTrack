@@ -147,21 +147,50 @@ def edit_link(slug):
     link = Link.query.filter_by(slug=slug).first_or_404()
     
     if request.method == 'POST':
+        # General
         link.destination = request.form.get('destination')
-        link.block_bots = request.form.get('block_bots') == 'true'
-        link.block_vpn = request.form.get('block_vpn') == 'true'
-        link.enable_captcha = request.form.get('enable_captcha') == 'true'
-        link.require_email = request.form.get('require_email') == 'true'
+        
+        # Targeting
+        link.ios_url = request.form.get('ios_url') or None
+        link.android_url = request.form.get('android_url') or None
+        
+        # Protection - checkboxes send value only when checked
+        link.block_bots = 'block_bots' in request.form
+        link.block_vpn = 'block_vpn' in request.form
+        link.block_adblock = 'block_adblock' in request.form
+        link.allow_no_js = 'allow_no_js' in request.form
+        link.enable_captcha = 'enable_captcha' in request.form
+        link.require_email = 'require_email' in request.form
         link.email_policy = request.form.get('email_policy', 'all')
         link.safe_url = request.form.get('safe_url') or None
         link.allowed_countries = request.form.get('allowed_countries') or None
         
         # Password
         password = request.form.get('password')
-        if password:
+        if password and password.strip():
             link.password_hash = hashlib.sha256(password.encode()).hexdigest()
         elif request.form.get('remove_password'):
             link.password_hash = None
+        
+        # Scheduling
+        start_hour = request.form.get('schedule_start_hour')
+        end_hour = request.form.get('schedule_end_hour')
+        link.schedule_start_hour = int(start_hour) if start_hour else None
+        link.schedule_end_hour = int(end_hour) if end_hour else None
+        link.schedule_timezone = request.form.get('schedule_timezone') or 'UTC'
+        
+        # Limits
+        max_clicks = request.form.get('max_clicks')
+        expiration = request.form.get('expiration_minutes')
+        link.max_clicks = int(max_clicks) if max_clicks else 0
+        link.expiration_minutes = int(expiration) if expiration else 0
+        
+        # Regenerate mask if requested
+        if request.form.get('regenerate_mask'):
+            full_url = f"{Config.SERVER_URL}/{slug}"
+            masked = shorten_with_isgd(full_url)
+            if masked:
+                link.public_masked_url = masked
         
         db.session.commit()
         flash('Link updated', 'success')

@@ -121,8 +121,11 @@
 </div>
 
 <!-- WebAuthn Script -->
-<script src="https://unpkg.com/@github/webauthn-json@2.1.1/dist/browser-ponyfill.min.js"></script>
-<script>
+<script src="https://unpkg.com/@github/webauthn-json@2.1.1/dist/esm/webauthn-json.browser-ponyfill.js"
+    type="module"></script>
+<script type="module">
+    import { create, get } from 'https://unpkg.com/@github/webauthn-json@2.1.1/dist/esm/webauthn-json.browser-ponyfill.js';
+    
     const registerBtn = document.getElementById('register-passkey');
     const statusDiv = document.getElementById('passkey-status');
     const nameInput = document.getElementById('passkey-name');
@@ -144,8 +147,8 @@
             });
             const opts = await optsRes.json();
 
-            // 2. Create Credential (Browser Native)
-            const credential = await window.webauthnJSON.create(opts);
+            // 2. Create Credential using @github/webauthn-json
+            const credential = await create({ publicKey: opts });
 
             // 3. Verify
             const verifyRes = await fetch("{{ url_for('dashboard.dashboard_passkey.passkey_register_verify') }}", {
