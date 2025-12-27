@@ -62,23 +62,7 @@ def ai_dashboard():
     """Redirect to unified console."""
     return redirect(url_for('dashboard.dashboard_ai.ai_console'))
 
-@bp.route('/ai/analyze_all', methods=['POST'])
-@login_required
-def ai_analyze_all():
-    """Queue AI analysis for all pending leads."""
-    leads_pending = Lead.query.filter(
-        db.or_(
-            Lead.custom_fields == None,
-            Lead.custom_fields == '{}',
-            ~Lead.custom_fields.like('%ai_identity%')
-        )
-    ).all()
-    
-    for lead in leads_pending:
-        log_queue.put({'type': 'identity_inference', 'lead_id': lead.id})
-    
-    flash(f'Queued {len(leads_pending)} leads for AI analysis.', 'success')
-    return redirect(url_for('dashboard.dashboard_ai.ai_console'))
+
 
 @bp.route('/ai/auto_tag', methods=['POST'])
 @login_required

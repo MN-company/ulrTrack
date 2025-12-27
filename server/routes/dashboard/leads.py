@@ -98,18 +98,11 @@ def lead_profile(lead_id):
 
     return render_template('profile.html', 
                           lead=lead, 
-                          holehe_list=[],  # REMOVED
                           devices=graph_data['devices'],
                           related_leads=graph_data['related_leads'],
                           ips=graph_data['ips'],
                           canvas_hashes=graph_data['canvas_hashes'],
-                          timeline_visits=graph_data['visits'],
-                          permutations={}, # REMOVED
-                          gravatar_data=None, # REMOVED
-                          ai_identity=None, # REMOVED
-                          gaia_id=None, # REMOVED
-                          blackbird_data=None, # REMOVED
-                          dorks=None # REMOVED
+                          timeline_visits=graph_data['visits']
                           )
 
 @bp.route('/qr/<slug>')

@@ -89,31 +89,7 @@ Output ONLY the tags, comma separated, nothing else."""
                         except Exception as e:
                             print(f"AI Auto-Tag Error: {e}")
 
-                # V24: Real-time Webhooks
-                if task.get('type') in ['log_visit', 'ai_analyze'] and Config.WEBHOOK_URL:
-                     try:
-                         import requests
-                         # Simple heuristic: Only alert on new visits or high-value events?
-                         # For now, alert on every visit log if configured.
-                         if task['type'] == 'log_visit':
-                             data = task['data']
-                             # Basic Payload
-                             embed = {
-                                 "title": "🚨 New Hit Detected",
-                                 "color": 16711680 if data.get('is_suspicious') else 65280, # Red or Green
-                                 "fields": [
-                                     {"name": "IP", "value": data.get('ip_address', 'Unknown'), "inline": True},
-                                     {"name": "Country", "value": data.get('country', 'Unknown'), "inline": True},
-                                     {"name": "Device", "value": f"{data.get('os_family')} / {data.get('device_type')}", "inline": False},
-                                     {"name": "User Agent", "value": data.get('user_agent', '')[:100], "inline": False}
-                                 ],
-                                 "footer": {"text": "ulrTrack Pro Intelligence"}
-                             }
-                             
-                             requests.post(Config.WEBHOOK_URL, json={"embeds": [embed]}, timeout=5)
-                             print(f"WEBHOOK SENT to {Config.WEBHOOK_URL}")
-                     except Exception as e:
-                         print(f"Webhook Error: {e}")
+
 
         except Exception as e:
             print(f"Worker Error: {e}")

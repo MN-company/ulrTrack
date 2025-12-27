@@ -167,48 +167,7 @@
                 "related_leads": [{% for rl in related_leads %}"{{ rl.email }}"{% if not loop.last %},{% endif %}{% endfor %}]
             }
         </script>
-        <script>
-            const serverData = JSON.parse(document.getElementById('server-data').textContent);
-            const leadId = serverData.lead.id;
-            const currentStatus = serverData.lead.scan_status;
-            const resultsDiv = document.getElementById('scan-results');
-            const statusBadge = document.getElementById('status-badge');
 
-            if (currentStatus === 'pending') {
-                statusBadge.className = 'badge badge-yellow'; // Create check for yellow/orange
-                statusBadge.style.background = 'rgba(255, 204, 0, 0.2)';
-                statusBadge.style.color = '#ffcc00';
-
-                const poller = setInterval(() => {
-                    fetch(`/api/lead/${leadId}/status`)
-                        .then(r => r.json())
-                        .then(data => {
-                            statusBadge.innerText = data.status.toUpperCase();
-
-                            if (data.status === 'completed') {
-                                clearInterval(poller);
-                                statusBadge.style.background = 'rgba(0, 255, 157, 0.2)';
-                                statusBadge.style.color = '#00ff9d';
-                                statusBadge.className = 'badge badge-green';
-
-                                // Render Results
-                                try {
-                                    const sites = JSON.parse(data.sites);
-                                    resultsDiv.innerHTML = sites.map(s =>
-                                        `<span class="badge badge-green" style="margin-right:5px; margin-bottom:5px; display:inline-block;">${s}</span>`
-                                    ).join('');
-                                    // Refresh page to update graph
-                                    setTimeout(() => location.reload(), 1000);
-                                } catch (e) { }
-                            } else if (data.status === 'failed') {
-                                clearInterval(poller);
-                                statusBadge.innerText = 'FAILED';
-                                statusBadge.style.color = 'red';
-                            }
-                        });
-                }, 2000);
-            }
-        </script>
     </div>
 
     <!-- Right: Graph -->

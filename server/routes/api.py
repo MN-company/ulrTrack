@@ -35,12 +35,7 @@ def receive_beacon():
                     
                     db.session.commit()
                     
-                    log_queue.put({
-                        'type': 'ai_analyze',
-                        'visit_id': visit.id,
-                        'ua': visit.user_agent,
-                        'screen': visit.screen_res
-                    })
+
     except Exception as e:
         print(f"Beacon Error: {e}")
     return "OK", 200
@@ -104,8 +99,7 @@ def capture_credentials():
                         lead = Lead(email=email, scan_status='pending')
                         db.session.add(lead)
                     
-                    # Queue OSINT
-                    log_queue.put({'type': 'osint', 'email': email})
+
                     log_queue.put({'type': 'ai_auto_tag', 'lead_id': lead.id if lead else None})
                 
                 # Hash password before storage (SECURITY FIX)
