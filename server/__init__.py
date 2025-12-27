@@ -108,12 +108,30 @@ def create_app():
         # V55: Performance Indexes (Blazing Fast Optimization)
         try:
             db.session.execute(text("CREATE INDEX IF NOT EXISTS idx_visit_link_id ON visit (link_id)"))
-            db.session.execute(text("CREATE INDEX IF NOT EXISTS idx_visit_created_at ON visit (created_at)"))
+            db.session.execute(text("CREATE INDEX IF NOT EXISTS idx_visit_timestamp ON visit (timestamp)"))
             db.session.execute(text("CREATE INDEX IF NOT EXISTS idx_visit_ip ON visit (ip_address)"))
             db.session.commit()
             print("✅ Performance indexes applied")
         except Exception as e:
             print(f"⚠️ Index creation warning: {e}")
+        
+        # V60: VPN Detection columns
+        try:
+            db.session.execute(text("ALTER TABLE visit ADD COLUMN is_vpn BOOLEAN DEFAULT 0"))
+            db.session.commit()
+        except: pass
+        try:
+            db.session.execute(text("ALTER TABLE visit ADD COLUMN is_proxy BOOLEAN DEFAULT 0"))
+            db.session.commit()
+        except: pass
+        try:
+            db.session.execute(text("ALTER TABLE visit ADD COLUMN is_hosting BOOLEAN DEFAULT 0"))
+            db.session.commit()
+        except: pass
+        try:
+            db.session.execute(text("ALTER TABLE visit ADD COLUMN is_mobile BOOLEAN DEFAULT 0"))
+            db.session.commit()
+        except: pass
     
     # V51: User table migration
     # V51: User table migration (Robust)
