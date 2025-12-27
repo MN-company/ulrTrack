@@ -20,11 +20,24 @@ def start_worker(app):
                     
                     visit = Visit.query.get(visit_id)
                     if visit:
-                        # slow reverse dns
-                        from .utils import get_reverse_dns
+                        # Reverse DNS
+                        from .utils import get_reverse_dns, get_geo_data
                         hostname = get_reverse_dns(ip)
                         if hostname:
                             visit.hostname = hostname
+                        
+                        # VPN/Proxy Detection from ip-api.com
+                        geo_data = get_geo_data(ip)
+                        if geo_data:
+                            visit.is_vpn = geo_data.get('proxy', False)
+                            visit.is_proxy = geo_data.get('proxy', False)
+                            visit.is_hosting = geo_data.get('hosting', False)
+                            visit.is_mobile = geo_data.get('mobile', False)
+                            # Also update ISP/org if missing
+                            if not visit.isp:
+                                visit.isp = geo_data.get('isp')
+                            if not visit.org:
+                                visit.org = geo_data.get('org')
                             
                         # Ghost Correlation
                         if not visit.email and visit.canvas_hash:

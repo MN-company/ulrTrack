@@ -139,6 +139,12 @@ class Visit(DatabaseModel):
     # Session Detector
     detected_sessions: Mapped[Optional[str]] = mapped_column(Text)
     
+    # VPN/Proxy Detection
+    is_vpn: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_proxy: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_hosting: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_mobile: Mapped[bool] = mapped_column(Boolean, default=False)
+    
     link: Mapped["Link"] = relationship(back_populates="visits")
 
 class User(UserMixin, DatabaseModel):

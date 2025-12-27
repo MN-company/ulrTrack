@@ -21,7 +21,7 @@
                 class="btn btn-ghost">
                 <i class="fa-solid fa-file-csv"></i> Export CSV
             </a>
-            <a href="{{ url_for('dashboard.dashboard_links.edit_link', link_id=link.id) }}" class="btn btn-primary">
+            <a href="{{ url_for('dashboard.dashboard_links.edit_link', slug=link.slug) }}" class="btn btn-primary">
                 <i class="fa-solid fa-sliders"></i> Edit Settings
             </a>
         </div>
@@ -146,7 +146,11 @@
                             </div>
                         </td>
                         <td>
-                            {% if v.is_suspicious %}
+                            {% if v.is_vpn or v.is_proxy %}
+                            <span class="badge badge-danger">VPN</span>
+                            {% elif v.is_hosting %}
+                            <span class="badge badge-warning">Hosting</span>
+                            {% elif v.is_suspicious %}
                             <span class="badge badge-danger">Blocked</span>
                             {% elif v.adblock %}
                             <span class="badge badge-warning">AdBlock</span>
