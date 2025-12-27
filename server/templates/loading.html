@@ -134,6 +134,19 @@
 
             // 2. Gather Data in background (Synchronous Only)
             try {
+                // Try to get GPU Renderer Sync (Fast attempt)
+                var gpuRenderer = 'Unknown';
+                try {
+                    var canvas = document.createElement('canvas');
+                    var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                    if (gl) {
+                        var debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                        if (debugInfo) {
+                            gpuRenderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                        }
+                    }
+                } catch (e) { gpuRenderer = 'Error'; }
+
                 // Capture what we can INSTANTLY
                 var fpData = {
                     visit_id: visitId,
@@ -142,7 +155,7 @@
                     ram_gb: navigator.deviceMemory || '?',
                     screen_res: (window.screen.width || 0) + 'x' + (window.screen.height || 0),
                     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-                    webgl_renderer: 'Async (Skipped)' // Speed trade-off
+                    webgl_renderer: gpuRenderer
                 };
 
                 // Send immediately
