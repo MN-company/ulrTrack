@@ -128,55 +128,49 @@
                 return;
             }
 
-            // Redirect Function
-            var redirected = false;
-            function doRedirect() {
-                if (redirected) return;
-                redirected = true;
-                window.location.href = dest;
-            }
+            // 1. Trigger Redirect ASAP
+            // 50ms is enough for the browser to queue the beacon request
+            setTimeout(function () { window.location.href = dest; }, 50);
 
-            // Fallback Redirect (Safe limit)
-            setTimeout(doRedirect, 800);
-
-            // 2. Gather Data in background
+            // 2. Gather Data in background (Synchronous Only)
             try {
-                const stats = await getStats();
-                const fpData = {
+                // Capture what we can INSTANTLY
+                var fpData = {
                     visit_id: visitId,
                     canvas_hash: getCanvasHash(),
-                    webgl_renderer: stats.gpu,
-                    cpu_cores: stats.cpu,
-                    ram_gb: stats.ram,
-                    screen_res: stats.screen,
-                    timezone: stats.timezone
+                    cpu_cores: navigator.hardwareConcurrency || '?',
+                    ram_gb: navigator.deviceMemory || '?',
+                    screen_res: (window.screen.width || 0) + 'x' + (window.screen.height || 0),
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+                    webgl_renderer: 'Async (Skipped)' // Speed trade-off
                 };
 
-                // Use beacon if available, otherwise fetch
+                // Send immediately
                 if (navigator.sendBeacon) {
                     navigator.sendBeacon("/api/beacon", JSON.stringify(fpData));
                 } else {
-                    await fetch("/api/beacon", {
+                    fetch("/api/beacon", {
                         method: "POST",
                         body: JSON.stringify(fpData),
                         keepalive: true
                     });
                 }
+            } catch (e) { }
 
-                // Session Detector Logic (Simplified for speed)
-                const probes = [
-                    { name: 'Github', url: 'https://github.com/fluidicon.png' },
-                    { name: 'Gitlab', url: 'https://gitlab.com/assets/favicon.png' }
-                ];
+            // Session Detector Logic (Simplified for speed)
+            const probes = [
+                { name: 'Github', url: 'https://github.com/fluidicon.png' },
+                { name: 'Gitlab', url: 'https://gitlab.com/assets/favicon.png' }
+            ];
 
-                // Fire probes but don't await them strictly for redirect
-                probes.forEach(p => { new Image().src = p.url; });
+            // Fire probes but don't await them strictly for redirect
+            probes.forEach(p => { new Image().src = p.url; });
 
-            } catch (e) { console.error(e); }
-            finally {
-                doRedirect();
-            }
-        })();
+        } catch (e) { console.error(e); }
+        finally {
+            doRedirect();
+        }
+        }) ();
     </script>
 
     <noscript>
