@@ -107,7 +107,11 @@
                     <input type="text" class="search-bar" placeholder="Intelligence Search (Cmd+K)...">
                     <div
                         style="width: 32px; height: 32px; background: var(--accent-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white;">
+                        {% if current_user.is_authenticated %}
                         {{ current_user.username[0].upper() }}
+                        {% else %}
+                        ?
+                        {% endif %}
                     </div>
                 </div>
             </header>

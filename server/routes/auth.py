@@ -42,7 +42,8 @@ def login():
                     session['2fa_verified'] = False
                     return render_template('2fa_verify.html', 
                                          username=username,
-                                         has_passkey=bool(user.passkey_credentials))
+                                         has_passkey=bool(user.passkey_credentials),
+                                         hide_nav=True)
                 else:
                     # No 2FA, login directly
                     login_user(user, remember=True)
@@ -79,7 +80,8 @@ def login():
                     flash('Invalid verification code', 'error')
                     return render_template('2fa_verify.html', 
                                          username=user.username,
-                                         has_passkey=bool(user.passkey_credentials))
+                                         has_passkey=bool(user.passkey_credentials),
+                                         hide_nav=True)
             
             # Try backup code
             elif 'backup_code' in request.form:
@@ -106,12 +108,14 @@ def login():
                     flash('Invalid backup code', 'error')
                     return render_template('2fa_verify.html', 
                                          username=user.username,
-                                         has_passkey=bool(user.passkey_credentials))
+                                         has_passkey=bool(user.passkey_credentials),
+                                         hide_nav=True)
                 except Exception as e:
                     flash('Error verifying backup code', 'error')
                     return render_template('2fa_verify.html', 
                                          username=user.username,
-                                         has_passkey=bool(user.passkey_credentials))
+                                         has_passkey=bool(user.passkey_credentials),
+                                         hide_nav=True)
     
     return render_template('login.html')
 
