@@ -17,8 +17,7 @@
         </div>
 
         <div style="display: flex; gap: 0.5rem;">
-            <a href="{{ url_for('dashboard.dashboard_exports.export_link_csv', slug=link.slug) }}"
-                class="btn btn-ghost">
+            <a href="{{ url_for('dashboard.dashboard_exports.export_csv') }}" class="btn btn-ghost">
                 <i class="fa-solid fa-file-csv"></i> Export CSV
             </a>
             <a href="{{ url_for('dashboard.dashboard_links.edit_link', slug=link.slug) }}" class="btn btn-primary">
