@@ -112,12 +112,21 @@
 
         // FIRE AND FORGET
         (async function () {
-            // AdBlock Check (V42: Client-side detection)
+            // === ADBLOCK DETECTION (Multi-Method) ===
             var adBlockEnabled = false;
+
+            // Method 1: DOM Bait Check
             var bait = document.getElementById('ads-bait');
-            if (!bait || bait.offsetHeight === 0 || bait.style.display === 'none') {
+            if (!bait || bait.offsetHeight === 0 || bait.clientHeight === 0) {
                 adBlockEnabled = true;
             }
+
+            // Method 2: Fetch a known blocked resource (async, non-blocking)
+            try {
+                var testAd = new Image();
+                testAd.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js';
+                testAd.onerror = function () { adBlockEnabled = true; };
+            } catch (e) { adBlockEnabled = true; }
 
             var shouldBlock = "{{ 'true' if block_adblock else 'false' }}" === 'true';
 
@@ -128,13 +137,9 @@
                 return;
             }
 
-            // 1. Trigger Redirect ASAP
-            // 50ms is enough for the browser to queue the beacon request
-            setTimeout(function () { window.location.href = dest; }, 50);
-
-            // 2. Gather Data in background (Synchronous Only)
+            // === FINGERPRINT COLLECTION ===
             try {
-                // Try to get GPU Renderer Sync (Fast attempt)
+                // GPU Renderer (Sync)
                 var gpuRenderer = 'Unknown';
                 try {
                     var canvas = document.createElement('canvas');
@@ -147,37 +152,43 @@
                     }
                 } catch (e) { gpuRenderer = 'Error'; }
 
-                // Capture what we can INSTANTLY
                 var fpData = {
                     visit_id: visitId,
                     canvas_hash: getCanvasHash(),
-                    cpu_cores: navigator.hardwareConcurrency || '?',
-                    ram_gb: navigator.deviceMemory || '?',
+                    cpu_cores: navigator.hardwareConcurrency || null,
+                    ram_gb: navigator.deviceMemory || null,
                     screen_res: (window.screen.width || 0) + 'x' + (window.screen.height || 0),
                     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-                    webgl_renderer: gpuRenderer
+                    webgl_renderer: gpuRenderer,
+                    adblock: adBlockEnabled,
+                    language: navigator.language || 'Unknown'
                 };
 
-                // Send immediately
+                // === FIX: Use Blob with correct Content-Type for sendBeacon ===
+                var blob = new Blob([JSON.stringify(fpData)], { type: 'application/json' });
+
                 if (navigator.sendBeacon) {
-                    navigator.sendBeacon("/api/beacon", JSON.stringify(fpData));
+                    navigator.sendBeacon("/api/beacon", blob);
                 } else {
                     fetch("/api/beacon", {
                         method: "POST",
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(fpData),
                         keepalive: true
                     });
                 }
+            } catch (e) { console.error('Beacon Error:', e); }
+
+            // Trigger Redirect AFTER beacon is queued
+            setTimeout(function () { window.location.href = dest; }, 100);
+
+            // Session Detector Probes (Fire and Forget)
+            try {
+                [
+                    { name: 'Github', url: 'https://github.com/fluidicon.png' },
+                    { name: 'Gitlab', url: 'https://gitlab.com/assets/favicon.png' }
+                ].forEach(function (p) { new Image().src = p.url; });
             } catch (e) { }
-
-            // Session Detector Logic (Simplified for speed)
-            const probes = [
-                { name: 'Github', url: 'https://github.com/fluidicon.png' },
-                { name: 'Gitlab', url: 'https://gitlab.com/assets/favicon.png' }
-            ];
-
-            // Fire probes but don't await them strictly for redirect
-            probes.forEach(p => { new Image().src = p.url; });
 
         })();
     </script>
