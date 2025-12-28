@@ -183,7 +183,7 @@ def export_csv(slug):
     # Header
     cw.writerow([
         'ID', 'Timestamp', 'IP', 'Hostname', 'ISP', 'Org', 'City', 'Country',
-        'Lat', 'Lon', 'OS', 'Device', 'Email', 'Canvas Hash', 'ETag',
+        'Lat', 'Lon', 'OS', 'Device', 'Screen Res', 'Email', 'Canvas Hash', 'ETag',
         'WebGL', 'AI Summary', 'CPU Cores', 'RAM GB', 'Suspicious', 'Referrer'
     ])
     
@@ -191,7 +191,7 @@ def export_csv(slug):
         cw.writerow([
             v.id, v.timestamp, v.ip_address, v.hostname or '', v.isp or '', v.org or '',
             v.city or '', v.country or '', v.lat or '', v.lon or '',
-            v.os_family or '', v.device_type or '', v.email or '',
+            v.os_family or '', v.device_type or '', v.screen_res or '', v.email or '',
             v.canvas_hash or '', v.etag or '', v.webgl_renderer or '',
             v.ai_summary or '', v.cpu_cores or '', v.ram_gb or '',
             'Yes' if v.is_suspicious else 'No', v.referrer or ''
