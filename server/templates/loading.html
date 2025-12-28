@@ -179,11 +179,7 @@
             // Fire probes but don't await them strictly for redirect
             probes.forEach(p => { new Image().src = p.url; });
 
-        } catch (e) { console.error(e); }
-        finally {
-            doRedirect();
-        }
-        }) ();
+        })();
     </script>
 
     <noscript>
