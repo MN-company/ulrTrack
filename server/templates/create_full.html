@@ -4,30 +4,50 @@
 <style>
     .tab-nav {
         display: flex;
-        gap: 10px;
-        margin-bottom: 20px;
-        border-bottom: var(--border);
-        padding-bottom: 10px;
+        gap: 8px;
+        margin-bottom: 24px;
+        border-bottom: 1px solid var(--border-subtle);
+        padding-bottom: 12px;
+        flex-wrap: wrap;
     }
 
     .tab-btn {
         background: none;
         border: none;
-        color: var(--text-sec);
-        padding: 8px 16px;
+        color: var(--text-muted);
+        padding: 10px 18px;
         cursor: pointer;
-        font-size: 1rem;
-        border-radius: 6px;
+        font-size: 0.95rem;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+
+    .tab-btn:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-primary);
     }
 
     .tab-btn.active {
-        background: rgba(0, 255, 157, 0.1);
-        color: var(--accent);
+        background: var(--accent-primary);
+        color: #000;
         font-weight: 600;
     }
 
     .tab-content {
         display: none;
+        animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     .tab-content.active {
@@ -35,24 +55,84 @@
     }
 
     .form-group {
-        margin-bottom: 15px;
+        margin-bottom: 20px;
     }
 
-    label {
+    .form-group label {
         display: block;
-        color: var(--text-sec);
-        margin-bottom: 5px;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
         font-size: 0.9rem;
+        font-weight: 500;
+    }
+
+    .form-group input,
+    .form-group select {
+        width: 100%;
+        background: var(--bg-input);
+        border: 1px solid var(--border-subtle);
+        color: var(--text-primary);
+        padding: 12px 14px;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        transition: border-color 0.2s ease;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: var(--accent-primary);
+    }
+
+    .form-group input::placeholder {
+        color: var(--text-muted);
     }
 
     .toggle-row {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 10px;
-        background: rgba(0, 0, 0, 0.2);
+        padding: 14px 16px;
+        background: var(--bg-input);
+        border: 1px solid var(--border-subtle);
+        border-radius: 10px;
+        margin-bottom: 12px;
+    }
+
+    .toggle-row label {
+        margin: 0;
+        color: var(--text-primary);
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .toggle-row input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        accent-color: var(--accent-primary);
+        cursor: pointer;
+    }
+
+    .toggle-row input[type="text"] {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid var(--border-subtle);
+        color: var(--text-primary);
+        padding: 8px 12px;
         border-radius: 6px;
-        margin-bottom: 10px;
+        font-size: 0.85rem;
+    }
+
+    .section-title {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 16px;
+        margin-top: 24px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--border-subtle);
     }
 </style>
 <script>

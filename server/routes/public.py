@@ -170,10 +170,17 @@ def redirect_to_url(slug):
     from ..utils import is_malicious_ip
     is_malicious = is_malicious_ip(ip)
     if is_malicious:
-        is_vpn_or_cloud = True  # Treat malicious IPs same as VPN
+        is_vpn_or_cloud = True
+        visit.is_suspicious = True
         visit.notes = "Malicious IP Detected"
+        # ALWAYS block malicious IPs regardless of link settings
+        db.session.commit()
+        if link.safe_url:
+            final_dest = link.safe_url
+        else:
+            return render_template('error.html', message="Access Denied (IP Reputation)", visit_id=visit.id, hide_nav=True), 403
     
-    # Check VPN block
+    # Check VPN block (only if not already blocked by malicious check)
     if link.block_vpn and is_vpn_or_cloud:
         visit.is_suspicious = True
         visit.is_vpn = True

@@ -2,84 +2,149 @@
 
 {% block breadcrumb %}Targets / All Leads{% endblock %}
 
+{% block head %}
+<style>
+    .leads-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .lead-card {
+        background: var(--bg-input);
+        border: 1px solid var(--border-subtle);
+        border-radius: 12px;
+        padding: 1.25rem;
+        transition: all 0.2s ease;
+    }
+
+    .lead-card:hover {
+        border-color: var(--accent-primary);
+        transform: translateY(-2px);
+    }
+
+    .lead-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .lead-avatar {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1.2rem;
+        color: #000;
+    }
+
+    .lead-info h3 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .lead-info .email {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+    }
+
+    .lead-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin-bottom: 1rem;
+    }
+
+    .lead-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-subtle);
+    }
+
+    .lead-meta .date {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: var(--text-muted);
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="card">
     <div class="card-header">
         <span class="card-title"><i class="fa-solid fa-users-viewfinder"></i> Target Database</span>
-
         <div style="display: flex; gap: 0.5rem;">
-            <a href="{{ url_for('dashboard.dashboard_leads.export_contacts_csv') }}" class="btn btn-ghost"
-                style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
-                <i class="fa-solid fa-download"></i> Export CSV
+            <a href="{{ url_for('dashboard.dashboard_leads.export_contacts_csv') }}" class="btn btn-ghost">
+                <i class="fa-solid fa-download"></i> Export
             </a>
             <a href="{{ url_for('dashboard.dashboard_leads.merge_candidates') }}" class="btn btn-ghost"
-                style="padding: 0.4rem 0.8rem; font-size: 0.85rem; color: var(--accent-warning)">
-                <i class="fa-solid fa-code-merge"></i> Merge Duplicates
+                style="color: var(--accent-warning)">
+                <i class="fa-solid fa-code-merge"></i> Merge
             </a>
         </div>
     </div>
 
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Identity</th>
-                <th>Tags</th>
-                <th>Confidence</th>
-                <th>Last Seen</th>
-                <th style="text-align: right;">Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for lead in leads %}
-            <tr>
-                <td>
-                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                        <div
-                            style="width: 36px; height: 36px; background: var(--bg-input); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--text-muted);">
-                            {{ lead.email[0].upper() }}
-                        </div>
-                        <div>
-                            <div style="font-weight: 500; color: var(--text-primary);">
-                                <a href="{{ url_for('dashboard.dashboard_leads.lead_profile', lead_id=lead.id) }}">{{
-                                    lead.name or 'Unknown Target' }}</a>
-                            </div>
-                            <div style="font-size: 0.8rem; color: var(--text-muted);">{{ lead.email }}</div>
-                        </div>
-                    </div>
-                </td>
-                <td>
-                    {% if lead.tags %}
-                    {% for tag in lead.tags.split(',')[:3] %}
-                    <span class="badge badge-purple" style="font-size: 0.7rem;">{{ tag }}</span>
-                    {% endfor %}
-                    {% if lead.tags.split(',')|length > 3 %}
-                    <span class="text-muted" style="font-size: 0.75rem;">+{{ lead.tags.split(',')|length - 3 }}</span>
-                    {% endif %}
-                    {% else %}
-                    <span class="text-muted" style="font-size: 0.8rem;">-</span>
-                    {% endif %}
-                </td>
-                <td>
-                    {% if lead.custom_fields_data and lead.custom_fields_data.get('ai_identity') %}
-                    <span class="badge badge-success">High (AI Verified)</span>
-                    {% elif lead.holehe_data %}
-                    <span class="badge badge-blue">Medium (OSINT)</span>
-                    {% else %}
-                    <span class="badge badge-warning">Low</span>
-                    {% endif %}
-                </td>
-                <td style="font-size: 0.85rem; color: var(--text-secondary);">
-                    {{ lead.created_at.strftime('%Y-%m-%d') }}
-                </td>
-                <td style="text-align: right;">
-                    <a href="{{ url_for('dashboard.dashboard_leads.lead_profile', lead_id=lead.id) }}"
-                        class="btn btn-ghost" style="padding: 0.4rem;">
-                        <i class="fa-solid fa-eye"></i> View
-                    </a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    {% if leads %}
+    <div class="leads-grid">
+        {% for lead in leads %}
+        <a href="{{ url_for('dashboard.dashboard_leads.lead_profile', lead_id=lead.id) }}" class="lead-card"
+            style="text-decoration: none;">
+            <div class="lead-header">
+                <div class="lead-avatar">{{ lead.email[0].upper() }}</div>
+                <div class="lead-info">
+                    <h3>{{ lead.name or 'Unknown Target' }}</h3>
+                    <div class="email">{{ lead.email }}</div>
+                </div>
+            </div>
+
+            <div class="lead-tags">
+                {% if lead.tags %}
+                {% for tag in lead.tags.split(',')[:3] %}
+                <span class="badge badge-purple">{{ tag.strip() }}</span>
+                {% endfor %}
+                {% endif %}
+
+                {% if lead.custom_fields_data and lead.custom_fields_data.get('ai_identity') %}
+                <span class="badge badge-success"><i class="fa-solid fa-brain"></i> AI Verified</span>
+                {% elif lead.holehe_data %}
+                <span class="badge badge-blue"><i class="fa-solid fa-search"></i> OSINT</span>
+                {% endif %}
+            </div>
+
+            <div class="lead-meta">
+                <span class="date"><i class="fa-regular fa-clock"></i> {{ lead.created_at.strftime('%Y-%m-%d') }}</span>
+                <span class="btn btn-ghost btn-sm"><i class="fa-solid fa-arrow-right"></i></span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fa-solid fa-users-slash"></i>
+        <h3>No Leads Yet</h3>
+        <p>Leads are automatically captured when users enter their email through your links.</p>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
