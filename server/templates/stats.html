@@ -54,7 +54,8 @@
                 <tr>
                     <td style="padding: 0.75rem;">
                         {% if code %}
-                        <img src="https://flagcdn.com/16x12/{{ code|lower }}.png" style="margin-right:0.5rem;">
+                        <img src="https://flagcdn.com/16x12/{{ code|lower }}.png" style="margin-right:0.5rem;"
+                            onerror="this.style.display='none';">
                         {% endif %}
                         {{ country }}
                     </td>
@@ -120,7 +121,7 @@
                             </div>
                             {% if v.city %}
                             <div style="font-size: 0.75rem; color: var(--text-muted);">
-                                <i class="fas fa-map-marker-alt"></i> {{ v.city }}
+                                📍 {{ v.city }}
                             </div>
                             {% endif %}
                         </td>

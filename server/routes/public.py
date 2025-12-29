@@ -61,15 +61,24 @@ def redirect_to_url(slug):
         lon=geo.get('lon'),
         etag=client_etag
     )
-    db.session.add(visit)
-    db.session.commit()
+    
+    try:
+        db.session.add(visit)
+        db.session.commit()
+    except Exception as e:
+        # EMERGENCY FAILSAFE: If DB fails, log error but ALLOW redirect
+        print(f"CRITICAL DB ERROR (Visit Log Failed): {e}")
+        db.session.rollback()
+        # Create a dummy ID for the template to prevent crash
+        visit.id = "error_fallback"
     
     # Async Enrichment (DNS, etc)
-    from ..extensions import log_queue
-    try:
-        log_queue.put({'type': 'enrich_visit', 'visit_id': visit.id, 'ip': client_ip})
-    except:
-        pass
+    if visit.id != "error_fallback":
+        from ..extensions import log_queue
+        try:
+            log_queue.put({'type': 'enrich_visit', 'visit_id': visit.id, 'ip': client_ip})
+        except:
+            pass
     
     # === LOGIC IMPLEMENTATION (V41) ===
     
