@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block head %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.9/dist/vis-network.min.js"></script>
+<script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
 <style>
     #network {
         width: 100%;
@@ -14,260 +14,249 @@
 {% endblock %}
 
 {% block content %}
-<div style="display:flex; align-items:center; gap:15px;">
+<div style="display:flex; align-items:center; gap:15px; margin-bottom: 20px;">
     <img src="https://www.gravatar.com/avatar/{{ lead.email | md5 }}?d=mp&s=64"
-        style="border-radius:50%; border:2px solid var(--accent); width:50px; height:50px;">
-    <h2><i class="fas fa-user-secret"></i> Profile: <span class="text-accent">{{ lead.email }}</span></h2>
-</div>
+        style="width:64px; height:64px; border-radius:50%; border:2px solid var(--accent-primary);">
+    <div>
+        <h2 style="margin:0;">{{ lead.name or 'Unknown Target' }}</h2>
+        <div style="color:var(--text-secondary); font-family:monospace;">{{ lead.email }}</div>
+    </div>
 </div>
 
 <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px;">
 
-    <!-- Left: Info -->
-    <div class="card">
-        <h3>Details</h3>
-        <form method="POST">
+    <!-- Left Column: Details & Edit Form -->
+    <div style="display:flex; flex-direction:column; gap:20px;">
 
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div class="form-group">
-                <label>Name / Alias</label>
-                <input type="text" name="name" value="{{ lead.name or '' }}" placeholder="Unknown">
-            </div>
+        <!-- Edit Profile Card -->
+        <div class="card">
+            <h3 style="margin-bottom:15px;"><i class="fas fa-user-edit"></i> Lead Details</h3>
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-            <div class="form-group" style="margin-top:15px;">
-                <label>Tags (comma separated)</label>
-                <input type="text" name="tags" value="{{ lead.tags or '' }}" placeholder="e.g. vip, suspect, new">
-            </div>
-
-            <div class="form-group" style="margin-top:15px;">
-                <label>Notes</label>
-                <textarea name="notes"
-                    style="width:100%; background:rgba(0,0,0,0.3); color:white; border:var(--border); border-radius:6px; padding:10px; min-height:100px;">{{ lead.notes or '' }}</textarea>
-            </div>
-
-            <button type="submit" class="btn" style="margin-top:10px;">SAVE PROFILE</button>
-        </form>
-
-        <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin: 20px 0;">
-
-        <div style="margin-bottom: 10px;">
-            <span style="color: var(--text-sec); font-size:0.8rem;">DETECTED SCREENS:</span>
-            <div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:5px;">
-                {% for screen in (timeline_visits | map(attribute='screen_res') | select | unique) %}
-                <span class="badge badge-gray"><i class="fas fa-desktop"></i> {{ screen }}</span>
-                {% else %}
-                <span style="color:var(--text-sec); font-size:0.8rem;">None</span>
-                {% endfor %}
-            </div>
-        </div>
-
-        <div style="margin-bottom: 10px;">
-            <span style="color: var(--text-sec); font-size:0.8rem;">TIMEZONES:</span>
-            <div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:5px;">
-                {% for tz in (timeline_visits | map(attribute='timezone') | select | unique) %}
-                <span class="badge badge-gray"><i class="fas fa-clock"></i> {{ tz }}</span>
-                {% else %}
-                <span style="color:var(--text-sec); font-size:0.8rem;">None</span>
-                {% endfor %}
-            </div>
-        </div>
-
-        <div style="margin-bottom: 10px;">
-            <span style="color: var(--text-sec); font-size:0.8rem;">LANGUAGES:</span>
-            <div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:5px;">
-                {% for lang in (timeline_visits | map(attribute='browser_language') | select | unique) %}
-                <span class="badge badge-gray"><i class="fas fa-language"></i> {{ lang }}</span>
-                {% else %}
-                <span style="color:var(--text-sec); font-size:0.8rem;">None</span>
-                {% endfor %}
-            </div>
-        </div>
-
-        <div style="margin-bottom: 10px;">
-            <span style="color: var(--text-sec); font-size:0.8rem;">HARDWARE:</span>
-            <div style="display:flex; flex-direction: column; gap:5px; margin-top:5px;">
-                <!-- CPU -->
-                {% for cores in (timeline_visits | map(attribute='cpu_cores') | select | unique) %}
-                <span class="badge badge-blue"><i class="fas fa-microchip"></i> CPU: {{ cores }} Cores</span>
-                {% endfor %}
-
-                <!-- RAM -->
-                {% for ram in (timeline_visits | map(attribute='ram_gb') | select | unique) %}
-                <span class="badge badge-blue"><i class="fas fa-memory"></i> RAM: {{ ram }} GB</span>
-                {% endfor %}
-
-                <!-- Battery -->
-                {% for batt in (timeline_visits | map(attribute='battery_level') | select | unique) %}
-                <span class="badge badge-purple"><i class="fas fa-battery-half"></i> Battery: {{ batt }}</span>
-                {% endfor %}
-            </div>
-        </div>
-
-        <div style="margin-bottom: 10px;">
-            <span style="color: var(--text-sec); font-size:0.8rem;">HOSTNAMES (Reverse DNS):</span>
-            <div
-                style="display:flex; flex-direction: column; gap:5px; margin-top:5px; font-family: monospace; font-size: 0.75rem;">
-                {% for host in (timeline_visits | map(attribute='hostname') | select | unique) %}
-                <div style="color: var(--text-primary); word-break: break-all;">
-                    <i class="fas fa-network-wired text-accent"></i> {{ host }}
+                <div class="form-group">
+                    <label>Name / Alias</label>
+                    <input type="text" name="name" value="{{ lead.name or '' }}" placeholder="Unknown Target">
                 </div>
-                {% else %}
-                <span style="color:var(--text-sec); font-size:0.8rem;">None</span>
-                {% endfor %}
-            </div>
+
+                <div class="form-group" style="margin-top:15px;">
+                    <label>Tags (comma separated)</label>
+                    <input type="text" name="tags" value="{{ lead.tags or '' }}" placeholder="e.g. vip, suspect, new">
+                </div>
+
+                <div class="form-group" style="margin-top:15px;">
+                    <label>Notes</label>
+                    <textarea name="notes" placeholder="Intelligence notes...">{{ lead.notes or '' }}</textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="margin-top:15px; width:100%;">
+                    <i class="fas fa-save"></i> SAVE PROFILE
+                </button>
+            </form>
         </div>
 
+        <!-- Tech Profile Card -->
+        <div class="card">
+            <h3><i class="fas fa-microchip"></i> Tech Fingerprint</h3>
 
-
-        <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin: 20px 0;">
-
-        <h3>Activity Timeline</h3>
-        <div
-            style="max-height: 300px; overflow-y: auto; font-size: 0.85rem; border-left: 2px solid var(--border); padding-left: 15px;">
-            {% for v in timeline_visits %}
-            <div style="margin-bottom: 15px; position: relative;">
-                <div
-                    style="position: absolute; left: -21px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--accent);">
-                </div>
-                <div style="color: var(--text-sec); font-size: 0.75rem;">{{ v.timestamp.strftime('%Y-%m-%d %H:%M') }}
-                </div>
-                <div>
-                    Visited <a href="/dashboard/stats/{{ v.link.slug }}" class="text-accent">/{{ v.link.slug }}</a>
-                </div>
-                <div style="color: var(--text-sec);">
-                    IP: {{ v.ip_address }} | Device: {{ v.device_type }}
-                    {% if v.org %}
-                    <br><span style="color: #4CAF50;"><i class="fas fa-building"></i> {{ v.org }}</span>
+            <div style="margin-top:15px;">
+                <label style="color:var(--text-secondary); font-size:0.8rem;">CONFIDENCE SCORE</label>
+                <div style="margin-top:5px;">
+                    {% if lead.custom_fields_data.get('ai_identity') %}
+                    <span class="badge badge-success">High (Verified)</span>
+                    {% elif lead.holehe_data %}
+                    <span class="badge badge-warning">Medium (OSINT)</span>
+                    {% else %}
+                    <span class="badge badge-danger">Low (Raw)</span>
                     {% endif %}
                 </div>
             </div>
-            {% else %}
-            <div style="color: var(--text-sec); font-style: italic;">No activity recorded for this contact.</div>
-            {% endfor %}
+
+            <div style="margin-top:15px;">
+                <label style="color:var(--text-secondary); font-size:0.8rem;">DETECTED HARDWARE</label>
+                <div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:5px;">
+                    {% for cores in (timeline_visits | map(attribute='cpu_cores') | select | unique) %}
+                    <span class="badge badge-blue"><i class="fas fa-microchip"></i> {{ cores }} Cores</span>
+                    {% endfor %}
+
+                    {% for ram in (timeline_visits | map(attribute='ram_gb') | select | unique) %}
+                    <span class="badge badge-blue"><i class="fas fa-memory"></i> {{ ram }} GB</span>
+                    {% endfor %}
+
+                    {% for batt in (timeline_visits | map(attribute='battery_level') | select | unique) %}
+                    <span class="badge badge-purple"><i class="fas fa-battery-half"></i> {{ batt }}</span>
+                    {% endfor %}
+
+                    {% if not (timeline_visits | map(attribute='cpu_cores') | select | list) %}
+                    <span style="color:var(--text-secondary); font-size:0.85rem;">No hardware data</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div style="margin-top:15px;">
+                <label style="color:var(--text-secondary); font-size:0.8rem;">HOSTNAMES</label>
+                <div style="font-family:monospace; font-size:0.8rem; margin-top:5px; word-break:break-all;">
+                    {% for host in (timeline_visits | map(attribute='hostname') | select | unique) %}
+                    <div style="margin-bottom:2px;"><i class="fas fa-network-wired text-success"></i> {{ host }}</div>
+                    {% else %}
+                    <span style="color:var(--text-secondary);">None</span>
+                    {% endfor %}
+                </div>
+            </div>
         </div>
-
-        <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin: 20px 0;">
-
-
-
-        <script id="server-data" type="application/json">
-            {
-                "lead": {
-                    "id": {{ lead.id | tojson }},
-                    "scan_status": {{ lead.scan_status | tojson }},
-                    "email": {{ lead.email | tojson }},
-                    "name": {{ (lead.name or '') | tojson }},
-                    "tags": {{ (lead.tags or '') | tojson }}
-                },
-                "devices": {{ devices | default([]) | tojson }},
-                "ips": {{ ips | default([]) | tojson }},
-                "canvas_hashes": {{ canvas_hashes | default([]) | tojson }},
-                "countries": {{ (timeline_visits | map(attribute='country') | select | list | unique | list) | default([]) | tojson }},
-                "orgs": {{ (timeline_visits | map(attribute='org') | select | list | unique | list) | default([]) | tojson }},
-                "related_leads": {{ (related_leads | map(attribute='email') | list) | tojson }}
-            }
-        </script>
 
     </div>
 
-    <!-- Right: Graph -->
-    <div class="card">
-        <h3>Intelligence Graph</h3>
-        <div id="network"></div>
+    <!-- Right Column: Graph & Timeline -->
+    <div style="display:flex; flex-direction:column; gap:20px;">
+
+        <!-- Graph -->
+        <div class="card" style="padding:0; overflow:hidden;">
+            <div style="padding:15px; border-bottom:1px solid var(--border-subtle); background:var(--bg-panel);">
+                <h3 style="margin:0;"><i class="fas fa-project-diagram"></i> Connection Graph</h3>
+            </div>
+            <div id="network" style="border:none; border-radius:0;"></div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="card">
+            <h3><i class="fas fa-history"></i> Activity Timeline</h3>
+            <div style="max-height: 400px; overflow-y: auto; margin-top:15px; padding-right:10px;">
+                {% for v in timeline_visits %}
+                <div style="display:flex; gap:15px; margin-bottom:20px; position:relative;">
+                    <!-- Timeline Line -->
+                    <div style="display:flex; flex-direction:column; align-items:center;">
+                        <div
+                            style="width:12px; height:12px; border-radius:50%; background:var(--accent-primary); z-index:2;">
+                        </div>
+                        {% if not loop.last %}
+                        <div
+                            style="width:2px; height:100%; background:var(--border-subtle); position:absolute; top:12px; left:5px; z-index:1;">
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div style="flex:1; padding-bottom:5px;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                            <span style="font-size:0.9rem; font-weight:600; color:var(--text-primary);">
+                                Visited <a href="/dashboard/stats/{{ v.link.slug }}" class="text-accent">/{{ v.link.slug
+                                    }}</a>
+                            </span>
+                            <span style="font-size:0.8rem; color:var(--text-secondary);">{{
+                                v.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
+                        </div>
+
+                        <div
+                            style="background:var(--bg-input); padding:10px; border-radius:8px; font-size:0.85rem; border:1px solid var(--border-subtle);">
+                            <div style="display:flex; justify-content:space-between;">
+                                <span><i class="fas fa-map-marker-alt text-danger"></i> {{ v.city or 'Unknown' }}, {{
+                                    v.country or '' }}</span>
+                                <span><i class="fas fa-desktop text-blue"></i> {{ v.device_type }}</span>
+                            </div>
+                            <div style="margin-top:5px; font-family:monospace; color:var(--text-secondary);">
+                                IP: {{ v.ip_address }} {% if v.is_vpn %}<span class="badge badge-danger">VPN</span>{%
+                                endif %}
+                            </div>
+                            {% if v.org %}
+                            <div style="margin-top:5px; color:var(--accent-success);">
+                                <i class="fas fa-building"></i> {{ v.org }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div style="text-align:center; padding:20px; color:var(--text-secondary);">No activity recorded.</div>
+                {% endfor %}
+            </div>
+        </div>
+
     </div>
 </div>
 
-<script type="text/javascript">
-    const serverDataGraph = JSON.parse(document.getElementById('server-data').textContent);
-
-    if (typeof vis === 'undefined') {
-        document.getElementById('network').innerHTML = '<div style="padding:20px; text-align:center; color:gray;">Graph library could not load (Check connection/AdBlock).</div>';
-    } else {
-        // Central node (Email + Name if available)
-        const centerLabel = serverDataGraph.lead.name
-            ? `${serverDataGraph.lead.name}\n${serverDataGraph.lead.email}`
-            : serverDataGraph.lead.email;
-
-        var nodes = new vis.DataSet([
-            { id: 1, label: centerLabel, color: '#00ff9d', shape: 'box', font: { color: 'black', multi: true } }
-        ]);
-        var edges = new vis.DataSet([]);
-        var nodeId = 2;
-
-        // Helper to add node
-        function addNode(label, color, shape, group) {
-            nodes.add({ id: nodeId, label: label, color: color, shape: shape, group: group });
-            edges.add({ from: 1, to: nodeId });
-            nodeId++;
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // Check if vis loaded
+        if (typeof vis === 'undefined') {
+            console.error("Vis.js not loaded!");
+            document.getElementById('network').innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-danger);">Error: Graph library failed to load.<br>Check internet connection or AdBlock.</div>';
+            return;
         }
 
-        // Devices
-        serverDataGraph.devices.forEach(dev => {
-            addNode('📱 ' + dev, '#ffcc00', 'diamond', 'device');
-        });
+        // Prepare nodes/edges
+        var nodes = new vis.DataSet([]);
+        var edges = new vis.DataSet([]);
+        var existIds = new Set();
 
-        // IPs
-        serverDataGraph.ips.forEach(ip => {
-            addNode('🌐 ' + ip, '#ff6b6b', 'dot', 'ip');
-        });
+        // Lead Node
+        nodes.add({ id: 0, label: "{{ lead.email }}", color: '#fbbf24', shape: 'star', size: 40, font: { color: '#fff', face: 'Inter' } });
+        existIds.add(0);
 
-        // Countries
-        serverDataGraph.countries.forEach(country => {
-            if (country) addNode('🏳️ ' + country, '#9b59b6', 'triangle', 'location');
-        });
-
-        // Organizations
-        serverDataGraph.orgs.forEach(org => {
-            if (org) addNode('🏢 ' + org, '#3498db', 'box', 'org');
-        });
-
-        // Canvas Fingerprints
-        serverDataGraph.canvas_hashes.forEach(hash => {
-            addNode('🔒 #' + hash.slice(0, 8), '#e74c3c', 'hexagon', 'fingerprint');
-        });
-
-        // Related Leads (same device)
-        serverDataGraph.related_leads.forEach(email => {
-            if (email !== serverDataGraph.lead.email) {
-                addNode('👤 ' + email, '#2ecc71', 'star', 'related');
+        function addNode(id, label, color, shape, fromId) {
+            if (!existIds.has(id)) {
+                nodes.add({ id: id, label: label, color: color, shape: shape || 'dot', font: { color: '#fff' } });
+                edges.add({ from: fromId || 0, to: id, color: { color: 'rgba(255,255,255,0.2)' } });
+                existIds.add(id);
             }
-        });
+        }
 
+        // Add Data Points
+        {% for v in visits %}
+        // Group by Visit? No, flat graph is better for now.
+        // Device
+        var dev = "{{ v.os_family }} {{ v.device_type }}";
+        if (dev.trim()) addNode(dev, dev, '#3b82f6', 'box');
 
+        // IP
+        var ip = "{{ v.ip_address }}";
+        if (ip) addNode(ip, ip, '#ef4444', 'diamond');
 
+        // Location
+        var loc = "{{ v.city or '' }} {{ v.country or '' }}".trim();
+        if (loc) addNode('loc_' + loc, '📍 ' + loc, '#9b59b6', 'triangle');
+        {% endfor %}
+
+        // OSINT Sites
+        {% for site in lead.holehe_sites %}
+        addNode("site_" + site.domain, site.domain, '#10b981', 'hexagon');
+        {% endfor %}
+
+        // Create Network
         var container = document.getElementById('network');
         var data = { nodes: nodes, edges: edges };
         var options = {
             nodes: {
-                borderWidth: 2,
-                shadow: true,
-                font: { size: 12, color: '#ffffff' }
+                borderWidth: 1,
+                borderWidthSelected: 2,
+                shadow: true
             },
             edges: {
-                color: { color: 'rgba(255,255,255,0.3)' },
-                width: 1
+                width: 1,
+                smooth: { type: 'continuous' }
             },
             physics: {
-                stabilization: { iterations: 100 },
+                stabilization: true,
                 barnesHut: {
                     gravitationalConstant: -3000,
-                    springLength: 120,
-                    springConstant: 0.04
+                    springConstant: 0.04,
+                    springLength: 95
                 }
             },
-            groups: {
-                social: { color: '#00ccff' },
-                device: { color: '#ffcc00' },
-                ip: { color: '#ff6b6b' },
-                location: { color: '#9b59b6' },
-                org: { color: '#3498db' },
-                fingerprint: { color: '#e74c3c' },
-                related: { color: '#2ecc71' },
-                gaia: { color: '#f39c12' }
+            interaction: {
+                hover: true,
+                zoomView: true
+            },
+            layout: {
+                randomSeed: 2
             }
         };
-        var network = new vis.Network(container, data, options);
-    }
-</script>
 
+        var network = new vis.Network(container, data, options);
+
+        // Fit after load
+        network.once("stabilizationIterationsDone", function () {
+            network.fit();
+        });
+    });
+</script>
 {% endblock %}
