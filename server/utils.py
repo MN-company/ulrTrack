@@ -175,6 +175,51 @@ def load_domain_list(filename: str) -> Set[str]:
 DISPOSABLE_DOMAINS = load_domain_list('disposable_domains.txt')
 PRIVACY_DOMAINS = load_domain_list('privacy_domains.txt')
 
+# Malicious IP Blocklist (loaded from GitHub on first call)
+_MALICIOUS_IPS = None
+
+def load_malicious_ips() -> Set[str]:
+    """Load malicious IP list from GitHub (cached after first load)."""
+    global _MALICIOUS_IPS
+    if _MALICIOUS_IPS is not None:
+        return _MALICIOUS_IPS
+    
+    _MALICIOUS_IPS = set()
+    try:
+        # Try to load from local cache first
+        cache_path = os.path.join(os.path.dirname(__file__), 'data', 'malicious_ips.txt')
+        if os.path.exists(cache_path):
+            with open(cache_path, 'r') as f:
+                _MALICIOUS_IPS = {line.strip() for line in f if line.strip() and not line.startswith('#')}
+            print(f"Loaded {len(_MALICIOUS_IPS)} malicious IPs from cache")
+        
+        # Update from GitHub in background (async would be better, but keeping it simple)
+        try:
+            resp = session.get(
+                'https://raw.githubusercontent.com/sefinek/Malicious-IP-Addresses/main/lists/main.txt',
+                timeout=5
+            )
+            if resp.status_code == 200:
+                new_ips = {line.strip() for line in resp.text.splitlines() if line.strip() and not line.startswith('#')}
+                if new_ips:
+                    _MALICIOUS_IPS = new_ips
+                    # Save to cache
+                    with open(cache_path, 'w') as f:
+                        f.write('\n'.join(sorted(new_ips)))
+                    print(f"Updated malicious IP list: {len(new_ips)} IPs")
+        except Exception as e:
+            print(f"Malicious IP update failed: {e}")
+            
+    except Exception as e:
+        print(f"Error loading malicious IPs: {e}")
+    
+    return _MALICIOUS_IPS
+
+def is_malicious_ip(ip: str) -> bool:
+    """Check if IP is in the malicious blocklist."""
+    blocklist = load_malicious_ips()
+    return ip in blocklist
+
 def is_disposable_email(email: str) -> bool:
     domain = email.split('@')[-1].lower()
     return domain in DISPOSABLE_DOMAINS

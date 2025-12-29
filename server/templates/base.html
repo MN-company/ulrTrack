@@ -104,7 +104,11 @@
                 </div>
 
                 <div class="top-actions">
-                    <input type="text" class="search-bar" placeholder="Intelligence Search (Cmd+K)...">
+                    <form action="{{ url_for('dashboard.dashboard_stats.global_search') }}" method="GET"
+                        style="margin: 0;">
+                        <input type="text" name="q" class="search-bar" placeholder="Intelligence Search (Cmd+K)..."
+                            value="{{ request.args.get('q', '') }}">
+                    </form>
                     <div
                         style="width: 32px; height: 32px; background: var(--accent-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white;">
                         {% if current_user.is_authenticated %}

@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block breadcrumb %}Search Results: "{{ q }}"{% endblock %}
+
+{% block content %}
+<div style="display: grid; gap: 1.5rem;">
+
+    <!-- Search Summary -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title"><i class="fa-solid fa-magnifying-glass"></i> Search: "{{ q }}"</span>
+            <div class="badge badge-blue">{{ visits|length + leads|length + links|length }} results</div>
+        </div>
+    </div>
+
+    <!-- Visits Section -->
+    {% if visits %}
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title"><i class="fa-solid fa-eye"></i> Visits ({{ visits|length }})</span>
+        </div>
+        <div style="overflow-x: auto;">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>IP</th>
+                        <th>Location</th>
+                        <th>Device</th>
+                        <th>Email</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in visits[:50] %}
+                    <tr>
+                        <td><span class="text-mono text-sm">{{ v.timestamp.strftime('%Y-%m-%d %H:%M') }}</span></td>
+                        <td>
+                            <span class="text-mono">{{ v.ip_address }}</span>
+                            {% if v.is_suspicious %}<span class="badge badge-danger">!</span>{% endif %}
+                        </td>
+                        <td>{{ v.city or '' }}{% if v.city and v.country %}, {% endif %}{{ v.country or '-' }}</td>
+                        <td>{{ v.os_family or '' }} / {{ v.device_type or '' }}</td>
+                        <td>{{ v.email or '-' }}</td>
+                        <td>
+                            <a href="{{ url_for('dashboard.dashboard_stats.stats', slug=v.link.slug) }}"
+                                class="btn btn-ghost btn-sm">
+                                <i class="fa-solid fa-chart-simple"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if visits|length > 50 %}
+        <div style="text-align: center; padding: 1rem; color: var(--text-muted);">
+            Showing first 50 of {{ visits|length }} results
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Leads Section -->
+    {% if leads %}
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title"><i class="fa-solid fa-users"></i> Leads ({{ leads|length }})</span>
+        </div>
+        <div
+            style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; padding: 1rem;">
+            {% for lead in leads %}
+            <a href="{{ url_for('dashboard.dashboard_leads.lead_profile', lead_id=lead.id) }}"
+                style="background: var(--bg-input); padding: 1rem; border-radius: 8px; text-decoration: none; display: block;">
+                <div style="font-weight: 600; color: var(--accent-primary);">{{ lead.email }}</div>
+                {% if lead.name %}<div style="color: var(--text-muted); font-size: 0.9rem;">{{ lead.name }}</div>{%
+                endif %}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Links Section -->
+    {% if links %}
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title"><i class="fa-solid fa-link"></i> Campaigns ({{ links|length }})</span>
+        </div>
+        <div
+            style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; padding: 1rem;">
+            {% for link in links %}
+            <a href="{{ url_for('dashboard.dashboard_stats.stats', slug=link.slug) }}"
+                style="background: var(--bg-input); padding: 1rem; border-radius: 8px; text-decoration: none; display: block;">
+                <div style="font-weight: 600; color: var(--accent-primary);">/{{ link.slug }}</div>
+                <div
+                    style="color: var(--text-muted); font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    {{ link.destination[:50] }}{% if link.destination|length > 50 %}...{% endif %}
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- No Results -->
+    {% if not visits and not leads and not links %}
+    <div class="card" style="text-align: center; padding: 3rem;">
+        <div style="font-size: 3rem; color: var(--text-muted); margin-bottom: 1rem;">
+            <i class="fa-solid fa-search"></i>
+        </div>
+        <div style="font-size: 1.2rem; color: var(--text-secondary);">No results found for "{{ q }}"</div>
+        <div style="color: var(--text-muted); margin-top: 0.5rem;">Try a different search term</div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

@@ -4,11 +4,59 @@ import json
 from collections import Counter
 from datetime import datetime, timedelta
 
-from ...models import Link, Visit
+from ...models import Link, Visit, Lead
 from ...extensions import db
 from ...config import Config
 
 bp = Blueprint('dashboard_stats', __name__)
+
+@bp.route('/search')
+@login_required
+def global_search():
+    """Global search across visits, leads, and links."""
+    q = request.args.get('q', '').strip()
+    
+    if not q:
+        flash('Please enter a search term', 'warning')
+        return redirect(url_for('dashboard.dashboard_stats.global_timeline'))
+    
+    # Search visits
+    search_term = f"%{q}%"
+    visits = Visit.query.filter(
+        db.or_(
+            Visit.ip_address.ilike(search_term),
+            Visit.email.ilike(search_term),
+            Visit.hostname.ilike(search_term),
+            Visit.org.ilike(search_term),
+            Visit.city.ilike(search_term),
+            Visit.country.ilike(search_term),
+            Visit.canvas_hash.ilike(search_term),
+            Visit.webgl_renderer.ilike(search_term)
+        )
+    ).order_by(Visit.timestamp.desc()).limit(100).all()
+    
+    # Search leads
+    leads = Lead.query.filter(
+        db.or_(
+            Lead.email.ilike(search_term),
+            Lead.name.ilike(search_term),
+            Lead.notes.ilike(search_term)
+        )
+    ).limit(50).all()
+    
+    # Search links
+    links = Link.query.filter(
+        db.or_(
+            Link.slug.ilike(search_term),
+            Link.destination.ilike(search_term)
+        )
+    ).limit(50).all()
+    
+    return render_template('search_results.html',
+                          q=q,
+                          visits=visits,
+                          leads=leads,
+                          links=links)
 
 @bp.route('/timeline')
 @login_required

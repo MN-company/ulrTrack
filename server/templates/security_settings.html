@@ -108,28 +108,77 @@
         <form action="{{ url_for('dashboard.dashboard_security.change_password') }}" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="mb-4">
-                <input type="password" name="current_password" placeholder="Current Password" required
-                    style="background: var(--bg-input); border: 1px solid var(--border-subtle); color: white; padding: 0.7rem; border-radius: 8px; width: 100%; margin-bottom: 0.5rem;">
-                <input type="password" name="new_password" placeholder="New Password" required
-                    style="background: var(--bg-input); border: 1px solid var(--border-subtle); color: white; padding: 0.7rem; border-radius: 8px; width: 100%; margin-bottom: 0.5rem;">
-                <input type="password" name="confirm_password" placeholder="Confirm New Password" required
-                    style="background: var(--bg-input); border: 1px solid var(--border-subtle); color: white; padding: 0.7rem; border-radius: 8px; width: 100%;">
+                <div style="position: relative; margin-bottom: 0.5rem;">
+                    <input type="password" id="current_password" name="current_password" placeholder="Current Password"
+                        required
+                        style="background: var(--bg-input); border: 1px solid var(--border-subtle); color: white; padding: 0.7rem; padding-right: 40px; border-radius: 8px; width: 100%;">
+                    <button type="button" onclick="togglePassword('current_password', this)"
+                        style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer;">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
+                <div style="position: relative; margin-bottom: 0.5rem;">
+                    <input type="password" id="new_password" name="new_password" placeholder="New Password" required
+                        style="background: var(--bg-input); border: 1px solid var(--border-subtle); color: white; padding: 0.7rem; padding-right: 40px; border-radius: 8px; width: 100%;">
+                    <button type="button" onclick="togglePassword('new_password', this)"
+                        style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer;">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
+                <div style="position: relative;">
+                    <input type="password" id="confirm_password" name="confirm_password"
+                        placeholder="Confirm New Password" required
+                        style="background: var(--bg-input); border: 1px solid var(--border-subtle); color: white; padding: 0.7rem; padding-right: 40px; border-radius: 8px; width: 100%;">
+                    <button type="button" onclick="togglePassword('confirm_password', this)"
+                        style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer;">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
             </div>
             <button class="btn btn-primary w-full">Update Password</button>
         </form>
     </div>
 </div>
 
-<!-- WebAuthn Script -->
-<script src="https://unpkg.com/@github/webauthn-json@2.1.1/dist/esm/webauthn-json.browser-ponyfill.js"
-    type="module"></script>
-<script type="module">
-    import { create, get } from 'https://unpkg.com/@github/webauthn-json@2.1.1/dist/esm/webauthn-json.browser-ponyfill.js';
-    
+<script>
+    function togglePassword(inputId, btn) {
+        const input = document.getElementById(inputId);
+        const icon = btn.querySelector('i');
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            input.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    }
+</script>
+
+<!-- Passkey Script (Native WebAuthn) -->
+<script>
     const registerBtn = document.getElementById('register-passkey');
     const statusDiv = document.getElementById('passkey-status');
     const nameInput = document.getElementById('passkey-name');
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    // Base64URL helpers
+    function base64urlToArrayBuffer(base64url) {
+        const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+        const padding = '='.repeat((4 - base64.length % 4) % 4);
+        const binary = atob(base64 + padding);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return bytes.buffer;
+    }
+
+    function arrayBufferToBase64url(buffer) {
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    }
 
     registerBtn.addEventListener('click', async () => {
         const name = nameInput.value.trim();
@@ -138,29 +187,58 @@
             return;
         }
 
-        statusDiv.innerHTML = '<span style="color:var(--accent-primary)">Waiting for authenticator...</span>';
+        statusDiv.innerHTML = '<span style="color:var(--text-muted)">Waiting for authenticator...</span>';
 
         try {
-            // 1. Get Options
+            // 1. Get Options from server
             const optsRes = await fetch("{{ url_for('dashboard.dashboard_passkey.passkey_register_options') }}", {
-                method: 'POST', headers: { 'X-CSRFToken': csrfToken }
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken }
             });
             const opts = await optsRes.json();
 
-            // 2. Create Credential using @github/webauthn-json
-            const credential = await create({ publicKey: opts });
+            // 2. Convert server options to WebAuthn format
+            const publicKeyOpts = {
+                challenge: base64urlToArrayBuffer(opts.challenge),
+                rp: opts.rp,
+                user: {
+                    id: base64urlToArrayBuffer(opts.user.id),
+                    name: opts.user.name,
+                    displayName: opts.user.displayName
+                },
+                pubKeyCredParams: opts.pubKeyCredParams,
+                timeout: opts.timeout || 60000,
+                authenticatorSelection: opts.authenticatorSelection,
+                attestation: opts.attestation || 'none'
+            };
 
-            // 3. Verify
+            if (opts.excludeCredentials) {
+                publicKeyOpts.excludeCredentials = opts.excludeCredentials.map(cred => ({
+                    id: base64urlToArrayBuffer(cred.id),
+                    type: cred.type,
+                    transports: cred.transports
+                }));
+            }
+
+            // 3. Create Credential
+            const credential = await navigator.credentials.create({ publicKey: publicKeyOpts });
+
+            // 4. Convert response for server
+            const credentialForServer = {
+                id: credential.id,
+                rawId: arrayBufferToBase64url(credential.rawId),
+                type: credential.type,
+                response: {
+                    clientDataJSON: arrayBufferToBase64url(credential.response.clientDataJSON),
+                    attestationObject: arrayBufferToBase64url(credential.response.attestationObject)
+                }
+            };
+
+            // 5. Verify with server
             const verifyRes = await fetch("{{ url_for('dashboard.dashboard_passkey.passkey_register_verify') }}", {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken
-                },
-                body: JSON.stringify({
-                    credential: credential,
-                    name: name
-                })
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify({ credential: credentialForServer, name: name })
             });
 
             const result = await verifyRes.json();
@@ -172,7 +250,7 @@
             }
 
         } catch (error) {
-            console.error(error);
+            console.error('Passkey Error:', error);
             statusDiv.innerHTML = `<span style="color:var(--accent-danger)">Error: ${error.message}</span>`;
         }
     });

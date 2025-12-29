@@ -153,25 +153,31 @@ def redirect_to_url(slug):
         'expressvpn', 'nordvpn', 'cyberghost', 'surfshark', 'cloudflare', 'fastly', 'akamai'
     ]
     
-    # 1. VPN/Bot Detection
+    # 1. VPN/Bot/Malicious Detection
     is_bot = is_bot_ua(ua_string) or geo.get('hosting') == True or geo.get('proxy') == True
     if geo.get('org'):
         org_lower = geo.get('org').lower()
         if any(p in org_lower for p in cloud_providers):
-            is_bot = True # Treat cloud/vpn as potential bot
+            is_bot = True
             
     is_vpn_or_cloud = geo.get('hosting') == True or geo.get('proxy') == True
     if geo.get('org'):
         org_lower = geo.get('org').lower()
-        # Check against provider list explicitly for VPN flag
         if any(p in org_lower for p in cloud_providers):
             is_vpn_or_cloud = True
+    
+    # Check Malicious IP Blocklist
+    from ..utils import is_malicious_ip
+    is_malicious = is_malicious_ip(ip)
+    if is_malicious:
+        is_vpn_or_cloud = True  # Treat malicious IPs same as VPN
+        visit.notes = "Malicious IP Detected"
     
     # Check VPN block
     if link.block_vpn and is_vpn_or_cloud:
         visit.is_suspicious = True
-        visit.is_vpn = True # Set flag immediately
-        visit.notes = "Blocked: VPN/Cloud Detected"
+        visit.is_vpn = True
+        visit.notes = visit.notes or "Blocked: VPN/Cloud Detected"
         db.session.commit()
         if link.safe_url:
             final_dest = link.safe_url
