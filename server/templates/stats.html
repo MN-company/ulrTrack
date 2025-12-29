@@ -50,11 +50,11 @@
         </div>
         <table class="data-table">
             <tbody>
-                {% for country, count in top_countries %}
+                {% for country, code, count in top_countries %}
                 <tr>
                     <td style="padding: 0.75rem;">
-                        {% if country != 'Unknown' %}
-                        <img src="https://flagcdn.com/16x12/{{ country|lower }}.png" style="margin-right:0.5rem;">
+                        {% if code %}
+                        <img src="https://flagcdn.com/16x12/{{ code|lower }}.png" style="margin-right:0.5rem;">
                         {% endif %}
                         {{ country }}
                     </td>

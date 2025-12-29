@@ -1,11 +1,39 @@
 import sqlite3
 import os
 
-DB_PATHS = [
-    '/Users/mnbrain/my-dark-store/ulrTrack/server/instance/shortener.db',
-    '/Users/mnbrain/my-dark-store/ulrTrack/instance/ulrtrack.db',
-    '/Users/mnbrain/my-dark-store/ulrTrack/server/shortener.db'
+# Use relative paths generally, but also check absolute paths for PA
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Potential relative paths to check
+POTENTIAL_PATHS = [
+    'instance/ulrtrack.db',
+    'server/instance/shortener.db',
+    'server/shortener.db',
+    'instance/shortener.db',
+    'shortener.db'
 ]
+
+# Absolute paths for PythonAnywhere explicitly
+PA_PATHS = [
+    '/home/mncompany/mysite/server/instance/shortener.db',
+    '/home/mncompany/mysite/instance/shortener.db'
+]
+
+def get_db_paths():
+    paths = set()
+    
+    # Check relative
+    for p in POTENTIAL_PATHS:
+        full_p = os.path.join(BASE_DIR, p)
+        if os.path.exists(full_p):
+            paths.add(full_p)
+            
+    # Check absolute
+    for p in PA_PATHS:
+        if os.path.exists(p):
+            paths.add(p)
+            
+    return list(paths)
 
 def add_column(cursor, table, col_def):
     try:
@@ -13,23 +41,24 @@ def add_column(cursor, table, col_def):
         cursor.execute(f"ALTER TABLE {table} ADD COLUMN {col_def}")
         print(f"Added {col_name} to {table}")
     except Exception as e:
-        # Ignore duplicate column or no such table errors usually
         msg = str(e).lower()
         if 'duplicate column' in msg:
             pass
         elif 'no such table' in msg:
-            pass # Table might not exist in this DB version
+            pass 
         else:
             print(f"Error adding {col_def} to {table}: {e}")
 
 def fix_db():
-    print("Starting DB migration check...")
-    found = False
-    for db_path in DB_PATHS:
-        if not os.path.exists(db_path):
-            continue
-        
-        found = True
+    print(f"Searching databases in {BASE_DIR}...")
+    paths = get_db_paths()
+    
+    if not paths:
+        print("No database files found!")
+        print("Please run this script from the project root directory.")
+        return
+
+    for db_path in paths:
         print(f"Migrating {db_path}...")
         try:
             conn = sqlite3.connect(db_path)
@@ -55,6 +84,7 @@ def fix_db():
             add_column(cursor, 'visit', 'is_proxy BOOLEAN DEFAULT 0')
             add_column(cursor, 'visit', 'is_hosting BOOLEAN DEFAULT 0')
             add_column(cursor, 'visit', 'is_mobile BOOLEAN DEFAULT 0')
+            add_column(cursor, 'visit', 'country_code VARCHAR(2)')
 
             # Links
             add_column(cursor, 'link', 'schedule_start_hour INTEGER')
@@ -71,9 +101,6 @@ def fix_db():
             print(f"Done migrating {db_path}")
         except Exception as e:
             print(f"Failed migrating {db_path}: {e}")
-            
-    if not found:
-        print("No databases found in known paths!")
 
 if __name__ == '__main__':
     fix_db()

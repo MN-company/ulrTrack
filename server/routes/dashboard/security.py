@@ -43,7 +43,8 @@ def security_settings():
     return render_template('security_settings.html',
                          user=user,
                          backup_count=backup_count,
-                         passkey_count=passkey_count)
+                         passkey_count=passkey_count,
+                         passkeys=user.passkeys)
 
 @bp.route('/security/2fa/setup')
 @login_required

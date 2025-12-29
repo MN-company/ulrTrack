@@ -114,6 +114,7 @@ class Visit(DatabaseModel):
     hostname: Mapped[Optional[str]] = mapped_column(String(256))
     city: Mapped[Optional[str]] = mapped_column(String(64))
     country: Mapped[Optional[str]] = mapped_column(String(64))
+    country_code: Mapped[Optional[str]] = mapped_column(String(2))
     lat: Mapped[Optional[float]] = mapped_column(Float)
     lon: Mapped[Optional[float]] = mapped_column(Float)
     

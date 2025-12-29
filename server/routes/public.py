@@ -56,6 +56,7 @@ def redirect_to_url(slug):
         org=geo.get('org'),
         country=geo.get('country'),
         city=geo.get('city'),
+        country_code=geo.get('countryCode'),
         lat=geo.get('lat'),
         lon=geo.get('lon'),
         etag=client_etag

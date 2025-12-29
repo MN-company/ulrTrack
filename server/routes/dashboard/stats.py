@@ -143,10 +143,32 @@ def stats(slug):
         
     chart_values = [clicks_map[d] for d in dates]
     
-    # Top Countries
-    countries = defaultdict(int)
-    for v in visits: countries[v.country or 'Unknown'] += 1
-    top_countries = sorted(countries.items(), key=lambda x: x[1], reverse=True)[:5]
+    chart_values = [clicks_map[d] for d in dates]
+    
+    # Top Countries with Flags Logic
+    country_map = {
+        'United States': 'us', 'Italy': 'it', 'United Kingdom': 'gb', 'Germany': 'de', 'France': 'fr',
+        'Spain': 'es', 'Brazil': 'br', 'Canada': 'ca', 'India': 'in', 'Russia': 'ru', 'Australia': 'au',
+        'Netherlands': 'nl', 'China': 'cn', 'Japan': 'jp', 'South Korea': 'kr', 'Singapore': 'sg',
+        'Sweden': 'se', 'Poland': 'pl', 'Ukraine': 'ua', 'Turkey': 'tr', 'Mexico': 'mx', 'Switzerland': 'ch',
+        'Belgium': 'be', 'Austria': 'at', 'Norway': 'no', 'Denmark': 'dk', 'Finland': 'fi'
+    }
+    
+    countries_count = defaultdict(int)
+    country_codes = {}
+    
+    for v in visits:
+        c_name = v.country or 'Unknown'
+        countries_count[c_name] += 1
+        
+        # Try to resolve code
+        if getattr(v, 'country_code', None):
+            country_codes[c_name] = v.country_code
+        elif c_name in country_map:
+            country_codes[c_name] = country_map[c_name]
+            
+    top_countries_raw = sorted(countries_count.items(), key=lambda x: x[1], reverse=True)[:5]
+    top_countries = [(name, country_codes.get(name), count) for name, count in top_countries_raw]
     
     # Referrers
     referrers = defaultdict(int)
